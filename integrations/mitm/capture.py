@@ -11,11 +11,11 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
-# Configure logging
+# Configure stdout logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration
+# Configuration variables
 ALLOWED_DOMAINS = os.getenv("ALLOWED_DOMAINS", "").split(",")
 NUM_WORKERS = int(os.getenv("NUM_WORKERS", 5))
 WORK_QUEUE_SIZE = int(os.getenv("WORK_QUEUE_SIZE", 100))
@@ -26,14 +26,16 @@ SENSOR_ID = os.getenv("SENSOR_ID")
 SOURCE_NAME = os.getenv("SOURCE_NAME", "proxy")
 SENSOR_VERSION = "1.0.0"
 
+#check for mandatory configurations
 if not SENSOR_ID:
     raise EnvironmentError("SENSOR_ID environment variable is not set. This UUID is required for trace identification.")
 if not ALLOWED_DOMAINS:
     raise EnvironmentError("ALLOWED_DOMAINS environment variable is not set. This is mandatory to run the otel_client script.")
 
+#Keep the list of allowed domains handy
 domain_filter = [d.strip() for d in ALLOWED_DOMAINS if d.strip()]
 
-# Queue for holding gRPC request data
+# Queue for holding gRPC request data. Producer/Consumer pattern
 work_queue = queue.Queue(maxsize=WORK_QUEUE_SIZE)
 
 # Set up OpenTelemetry tracing
@@ -42,6 +44,7 @@ tracer_provider = TracerProvider(resource=resource, sampler=TraceIdRatioBased(TR
 trace.set_tracer_provider(tracer_provider)
 tracer = trace.get_tracer(__name__)
 
+# Set up OTEL Exporter configuration
 span_processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=OTEL_EXPORTER_ENDPOINT, insecure=True, timeout=3))
 span_processor.max_queue_size = 2048
 span_processor.schedule_delay_millis = 5000
@@ -49,12 +52,13 @@ span_processor.max_export_batch_size = 512
 span_processor.export_timeout_millis = 3000
 tracer_provider.add_span_processor(span_processor)
 
-# Worker pool implementation
+# Worker pool(Consumer) implementation
 class Worker(threading.Thread):
     def __init__(self, work_queue):
         super().__init__(daemon=True)
         self.work_queue = work_queue
 
+    #Check for http flow object from Producer
     def run(self):
         while True:
             try:
@@ -65,6 +69,7 @@ class Worker(threading.Thread):
             finally:
                 self.work_queue.task_done()
 
+    #Process the http flow object. Send an otel trace
     def process_request(self, flow: http.HTTPFlow):    
         if flow.request.host not in domain_filter:
             logger.info("skipping tracing the domain: %s as the host is not in ALLOWED_DOMAINS: %s", flow.request.host, domain_filter)
@@ -95,12 +100,12 @@ class Worker(threading.Thread):
             span.set_attribute("sensor.version", SENSOR_VERSION)
             span.set_attribute("sensor.id", SENSOR_ID)
             span.set_attribute("http.status_code", flow.response.status_code)
-            span.set_attribute("http.request.body", str(flow.request.content))
-            span.set_attribute("http.response.body", str(flow.response.content))
             req_headers_dict = dict(flow.request.headers)
             resp_headers_dict = dict(flow.response.headers)
             span.set_attribute("http.request.headers", json.dumps(req_headers_dict))
             span.set_attribute("http.response.headers", json.dumps(resp_headers_dict))
+            span.set_attribute("http.request.body", str(flow.request.content))
+            span.set_attribute("http.response.body", str(flow.response.content))
 
             print("\n", "="*50)
             print(f"{flow.request.method} {flow.request.url} {flow.request.http_version}")
@@ -125,16 +130,17 @@ workers = [Worker(work_queue) for _ in range(NUM_WORKERS)]
 for worker in workers:
     worker.start()        
 
-# Mitmproxy addon
+# Entry point for mitmdump. Mitmproxy addon. This will act as Producer
 def response(flow: http.HTTPFlow) -> None:
     try:
+        #gracefully wait until queue is free. Wait duration is 10 sec 
         work_queue.put(flow, True, 10.00)
         logger.info("Enqueued request to %s for tracing.", flow.request.host)
     except queue.Full:
         logger.warning("Trace queue is full. Dropping trace data.")
 
+#Graceful shutdown for mitmdump script.
 def shutdown():
-    """Graceful shutdown for mitmdump script."""
     logger.info("Shutting down gracefully...")
     work_queue.join()  # Wait for all items in the queue to be processed
     for _ in range(NUM_WORKERS):
