@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -15,9 +17,41 @@ type Channels struct {
 	OtelAttributesChan chan OTELAttributes
 }
 
+type Config struct {
+	ServiceName    string   `json:"service_name"`
+	ServiceVersion string   `json:"service_version"`
+	AcceptHosts    []string `json:"accept"`
+}
+
+func loadConfig(filename string) (*Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var config Config
+	if err := json.Unmarshal(bytes, &config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
 func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
+
+	config, err := loadConfig("env.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
 	tp, err := initExporter(ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize exporter: %v", err)
@@ -39,7 +73,7 @@ func main() {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go receiverFunc(ctx, channels)
-	go processorFunc(ctx, channels)
+	go processorFunc(ctx, channels, config)
 	go exportFunc(ctx, channels)
 
 	<-signalChan

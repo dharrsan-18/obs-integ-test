@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -25,7 +26,11 @@ type OTELAttributes struct {
 	ResponseBody    string
 }
 
-func processorFunc(ctx context.Context, ch *Channels) {
+func processorFunc(ctx context.Context, ch *Channels, config *Config) {
+	acceptSet := make(map[string]struct{})
+	for _, host := range config.AcceptHosts {
+		acceptSet[host] = struct{}{}
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -34,18 +39,24 @@ func processorFunc(ctx context.Context, ch *Channels) {
 			if !ok {
 				return
 			}
-			otelAttrs := mapEventToOTEL(event)
-			ch.OtelAttributesChan <- otelAttrs
+			if _, accepted := acceptSet[event.Request.Header["Host"]]; accepted {
+				otelAttrs := mapEventToOTEL(event)
+
+				// Populate service fields from config
+				otelAttrs.SensorVersion = config.ServiceVersion
+				otelAttrs.SensorID = config.ServiceName
+
+				// Send to OTEL layer
+				ch.OtelAttributesChan <- otelAttrs
+			} else {
+				log.Printf("Host %s is not accepted, skipping event", event.Request.Header["Host"])
+			}
 		}
 	}
 }
 
 func mapEventToOTEL(event suricataHTTPEvent) OTELAttributes {
-	attrs := OTELAttributes{
-		// Set static values
-		SensorVersion: "1.25.5",
-		SensorID:      "06f72c60-e0a7-4916-8a6d-d6998dfdb2ed",
-	}
+	attrs := OTELAttributes{}
 
 	// Extract HTTP method, target, and flavor from request-line
 	if requestLine, ok := event.Request.Header["request-line"]; ok {
