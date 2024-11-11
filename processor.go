@@ -30,6 +30,9 @@ type OTELAttributes struct {
 
 func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 	for _, denyContentType := range denyContentTypes {
+		if denyContentType == "" {
+			continue // Skip empty deny content types
+		}
 		if strings.Contains(contentType, denyContentType) {
 			return true
 		}
