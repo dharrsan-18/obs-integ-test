@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"os/exec"
 )
 
@@ -34,9 +36,27 @@ type HTTPResponse struct {
 	Body   string            `json:"body"`
 }
 
-func receiverFunc(ctx context.Context, ch *Channels) {
+func getFirstNonLoopbackInterface() (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
 
-	cmd := exec.Command("stdbuf", "-oL", "suricata", "-c", "/etc/suricata/suricata.yaml", "-i", "eth0")
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 {
+			return iface.Name, nil
+		}
+	}
+	return "", fmt.Errorf("no suitable network interface found")
+}
+func receiverFunc(ctx context.Context, ch *Channels) {
+	iface, err := getFirstNonLoopbackInterface()
+	if err != nil {
+		log.Fatalf("Failed to find a suitable network interface: %v", err)
+	}
+	log.Printf("Using network interface: %s", iface)
+
+	cmd := exec.Command("stdbuf", "-oL", "suricata", "-c", "/etc/suricata/suricata.yaml", "-i", iface)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println("Error creating StdoutPipe:", err)
