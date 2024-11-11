@@ -28,19 +28,19 @@ type OTELAttributes struct {
 	ResponseBody    string
 }
 
-func isContentTypeDenied(contentType string, denyContentTypesSet map[string]struct{}) bool {
-	_, denied := denyContentTypesSet[contentType]
-	return denied
+func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
+	for _, denyContentType := range denyContentTypes {
+		if strings.Contains(contentType, denyContentType) {
+			return true
+		}
+	}
+	return false
 }
 
 func processorFunc(ctx context.Context, ch *Channels, config *Config) {
 	acceptSet := make(map[string]struct{})
 	for _, host := range config.AcceptHosts {
 		acceptSet[host] = struct{}{}
-	}
-	denyContentTypesSet := make(map[string]struct{})
-	for _, contentType := range config.DenyContentTypes {
-		denyContentTypesSet[contentType] = struct{}{}
 	}
 	for {
 		select {
@@ -57,9 +57,11 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) {
 				continue
 			}
 
-			// Deny if the request or response content types are in the deny list
-			if isContentTypeDenied(event.Request.Header["Content-Type"], denyContentTypesSet) ||
-				isContentTypeDenied(event.Response.Header["Content-Type"], denyContentTypesSet) {
+			// Deny if the request or response content types contain any denied substring
+			reqContentType := event.Request.Header["Content-Type"]
+			respContentType := event.Response.Header["Content-Type"]
+			if isContentTypeDenied(reqContentType, config.DenyContentTypes) ||
+				isContentTypeDenied(respContentType, config.DenyContentTypes) {
 				log.Printf("Content-Type is denied, skipping event")
 				continue
 			}

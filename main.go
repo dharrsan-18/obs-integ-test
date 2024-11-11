@@ -18,6 +18,7 @@ type Channels struct {
 }
 
 type Config struct {
+	NetworkInterface      string   `json:"network-interface"`
 	ServiceName           string   `json:"service_name"`
 	ServiceVersion        string   `json:"service_version"`
 	OtelCollectorEndpoint string   `json:"otel-collector-endpoint"`
@@ -67,16 +68,18 @@ func main() {
 	defer cancel()
 
 	channels := &Channels{
-		LogsChan:           make(chan suricataHTTPEvent, 1),
-		OtelAttributesChan: make(chan OTELAttributes, 1),
+		LogsChan:           make(chan suricataHTTPEvent, 5),
+		OtelAttributesChan: make(chan OTELAttributes, 5),
 	}
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	go receiverFunc(ctx, channels)
-	go processorFunc(ctx, channels, config)
-	go exportFunc(ctx, channels)
+	go receiverFunc(ctx, channels, config.NetworkInterface)
+	for i := 0; i < 5; i++ {
+		go processorFunc(ctx, channels, config)
+		go exportFunc(ctx, channels)
+	}
 
 	<-signalChan
 	cancel()

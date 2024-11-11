@@ -49,10 +49,13 @@ func getFirstNonLoopbackInterface() (string, error) {
 	}
 	return "", fmt.Errorf("no suitable network interface found")
 }
-func receiverFunc(ctx context.Context, ch *Channels) {
-	iface, err := getFirstNonLoopbackInterface()
-	if err != nil {
-		log.Fatalf("Failed to find a suitable network interface: %v", err)
+func receiverFunc(ctx context.Context, ch *Channels, iface string) {
+	var err error
+	if iface == "" {
+		iface, err = getFirstNonLoopbackInterface() // Use '=' to update the existing 'iface' variable
+		if err != nil {
+			log.Fatalf("Failed to find a suitable network interface: %v", err)
+		}
 	}
 	log.Printf("Using network interface: %s", iface)
 
@@ -80,10 +83,6 @@ func receiverFunc(ctx context.Context, ch *Channels) {
 			if err == nil {
 				ch.LogsChan <- event
 			}
-			// Check if data starts with { and ends with }
-			// if len(data) > 0 && data[0] == '{' && data[len(data)-1] == '}' {
-			// 	ch.LogsChan <-
-			// }
 		}
 	}
 
