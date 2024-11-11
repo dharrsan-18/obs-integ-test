@@ -18,9 +18,11 @@ type Channels struct {
 }
 
 type Config struct {
-	ServiceName    string   `json:"service_name"`
-	ServiceVersion string   `json:"service_version"`
-	AcceptHosts    []string `json:"accept"`
+	ServiceName           string   `json:"service_name"`
+	ServiceVersion        string   `json:"service_version"`
+	OtelCollectorEndpoint string   `json:"otel-collector-endpoint"`
+	AcceptHosts           []string `json:"accept-hosts"`
+	DenyContentTypes      []string `json:"deny-content-type"`
 }
 
 func loadConfig(filename string) (*Config, error) {
@@ -52,7 +54,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	tp, err := initExporter(ctx)
+	tp, err := initExporter(ctx, config)
 	if err != nil {
 		log.Fatalf("Failed to initialize exporter: %v", err)
 	}

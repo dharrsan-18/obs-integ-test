@@ -13,11 +13,11 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-func initExporter(ctx context.Context) (*sdktrace.TracerProvider, error) {
+func initExporter(ctx context.Context, config *Config) (*sdktrace.TracerProvider, error) {
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint("54.80.167.215:4317"), // Adjust endpoint as needed
+		otlptracegrpc.WithEndpoint(config.OtelCollectorEndpoint), // Adjust endpoint as needed
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create exporter: %w", err)
@@ -26,8 +26,8 @@ func initExporter(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName("suricata-monitor"),
-			semconv.ServiceVersion("1.0.0"),
+			semconv.ServiceName(config.ServiceName),
+			semconv.ServiceVersion(config.ServiceVersion),
 		),
 	)
 	if err != nil {
@@ -43,6 +43,7 @@ func initExporter(ctx context.Context) (*sdktrace.TracerProvider, error) {
 
 	return tp, nil
 }
+
 func exportFunc(ctx context.Context, ch *Channels) {
 	tracer := otel.GetTracerProvider().Tracer("http-monitor")
 
