@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Configuration variables
-ALLOWED_DOMAINS = os.getenv("ALLOWED_DOMAINS", "").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 NUM_WORKERS = int(os.getenv("NUM_WORKERS", 5))
 WORK_QUEUE_SIZE = int(os.getenv("WORK_QUEUE_SIZE", 100))
 OTEL_EXPORTER_ENDPOINT = os.getenv("OTEL_EXPORTER_ENDPOINT", "localhost:4317")
@@ -29,11 +29,11 @@ SENSOR_VERSION = "1.0.0"
 #check for mandatory configurations
 if not SENSOR_ID:
     raise EnvironmentError("SENSOR_ID environment variable is not set. This UUID is required for trace identification.")
-if not ALLOWED_DOMAINS:
-    raise EnvironmentError("ALLOWED_DOMAINS environment variable is not set. This is mandatory to run the otel_client script.")
+if len(ALLOWED_HOSTS)==0:
+    raise EnvironmentError("ALLOWED_HOSTS environment variable is not set. This is mandatory to run the otel_client script.")
 
 #Keep the list of allowed domains handy
-domain_filter = [d.strip() for d in ALLOWED_DOMAINS if d.strip()]
+domain_filter = [d.strip() for d in ALLOWED_HOSTS if d.strip()]
 
 # Queue for holding gRPC request data. Producer/Consumer pattern
 work_queue = queue.Queue(maxsize=WORK_QUEUE_SIZE)
@@ -72,7 +72,7 @@ class Worker(threading.Thread):
     #Process the http flow object. Send an otel trace
     def process_request(self, flow: http.HTTPFlow):    
         if flow.request.host not in domain_filter:
-            logger.info("skipping tracing the domain: %s as the host is not in ALLOWED_DOMAINS: %s", flow.request.host, domain_filter)
+            logger.info("skipping tracing the domain: %s as the host is not in ALLOWED_HOSTS: %s", flow.request.host, domain_filter)
             return  # Skip processing if domain doesn't match
 
         req_body_length = len(flow.request.content) > 100
