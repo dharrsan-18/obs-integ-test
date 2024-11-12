@@ -40,7 +40,7 @@ func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 	return false
 }
 
-func processorFunc(ctx context.Context, ch *Channels, config *Config) {
+func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range config.AcceptHosts {
 		acceptSet[host] = struct{}{}
@@ -48,10 +48,10 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case event, ok := <-ch.LogsChan:
 			if !ok {
-				return
+				return nil
 			}
 
 			// Check if the hostname is accepted

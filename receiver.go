@@ -95,51 +95,57 @@ func updateSuricataConfig(iface string) error {
 	return nil
 }
 
-func receiverFunc(ctx context.Context, ch *Channels, iface string) {
+func receiverFunc(ctx context.Context, ch *Channels, iface string) error {
 	var err error
 	if iface == "" {
 		iface, err = getFirstNonLoopbackInterface() // Use '=' to update the existing 'iface' variable
 		if err != nil {
-			log.Fatalf("Failed to find a suitable network interface: %v", err)
+			return fmt.Errorf("failed to find suitable network interface: %v", err)
 		}
 	}
 	log.Printf("Using network interface: %s", iface)
 
-	// Copy the original config file to temp-suricata.yaml before each run
 	if err := copySuricataConfig(); err != nil {
-		log.Fatalf("Failed to copy suricata.yaml to temp-suricata.yaml: %v", err)
+		return fmt.Errorf("failed to copy suricata config: %v", err)
 	}
 
-	// Update the temporary config with the interface
 	if err := updateSuricataConfig(iface); err != nil {
-		log.Fatalf("Failed to update temp-suricata.yaml: %v", err)
+		return fmt.Errorf("failed to update suricata config: %v", err)
 	}
-	fmt.Println("stdbuf", "-oL", "suricata", "-c", tempSuricataYamlPath, "-i", iface)
+
 	cmd := exec.Command("stdbuf", "-oL", "suricata", "-c", tempSuricataYamlPath, "-i", iface)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println("Error creating StdoutPipe:", err)
-		return
+		return fmt.Errorf("error creating StdoutPipe: %v", err)
 	}
-	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting command:", err)
-		return
-	}
-	scanner := bufio.NewScanner(stdout)
 
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("error starting command: %v", err)
+	}
+
+	defer func() {
+		if err := cmd.Process.Kill(); err != nil {
+			log.Printf("failed to kill process: %v", err)
+		}
+	}()
+
+	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
-			close(ch.LogsChan)
-			return
+			return ctx.Err()
 		default:
 			data := scanner.Bytes()
 			event := suricataHTTPEvent{}
-			err := json.Unmarshal(data, &event)
-			if err == nil {
+			if err := json.Unmarshal(data, &event); err == nil {
 				ch.LogsChan <- event
 			}
 		}
 	}
 
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("scanner error: %v", err)
+	}
+
+	return nil
 }

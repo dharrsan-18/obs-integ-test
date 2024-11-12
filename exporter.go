@@ -44,16 +44,16 @@ func initExporter(ctx context.Context, config *Config) (*sdktrace.TracerProvider
 	return tp, nil
 }
 
-func exportFunc(ctx context.Context, ch *Channels) {
+func exportFunc(ctx context.Context, ch *Channels) error {
 	tracer := otel.GetTracerProvider().Tracer("http-monitor")
 
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case attrs, ok := <-ch.OtelAttributesChan:
 			if !ok {
-				return
+				return nil
 			}
 
 			// Create new span for each event

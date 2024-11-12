@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // pointer for suricataHTTPEvent
@@ -45,10 +47,11 @@ func loadConfig(filename string) (*Config, error) {
 
 	return &config, nil
 }
-
 func main() {
-
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	eg, ctx := errgroup.WithContext(ctx)
 
 	config, err := loadConfig("env.json")
 	if err != nil {
@@ -59,31 +62,57 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize exporter: %v", err)
 	}
-	defer func() {
-		if err := tp.Shutdown(ctx); err != nil {
-			log.Printf("Error shutting down tracer provider: %v", err)
-		}
-	}()
-
-	defer cancel()
 
 	channels := &Channels{
 		LogsChan:           make(chan suricataHTTPEvent, 5),
 		OtelAttributesChan: make(chan OTELAttributes, 5),
 	}
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	// Handle shutdown signals
+	eg.Go(func() error {
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case sig := <-signalChan:
+			log.Printf("Received signal %v, starting graceful shutdown...", sig)
+			cancel()
 
-	go receiverFunc(ctx, channels, config.NetworkInterface)
+			// Close channels
+			close(channels.LogsChan)
+			close(channels.OtelAttributesChan)
+
+			// Wait for 10 seconds
+			time.Sleep(10 * time.Second)
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
+
+	// Start receiver
+	eg.Go(func() error {
+		return receiverFunc(ctx, channels, config.NetworkInterface)
+	})
+
+	// Start processors and exporters
 	for i := 0; i < 5; i++ {
-		go processorFunc(ctx, channels, config)
-		go exportFunc(ctx, channels)
+		eg.Go(func() error {
+			return processorFunc(ctx, channels, config)
+		})
+		eg.Go(func() error {
+			return exportFunc(ctx, channels)
+		})
 	}
 
-	<-signalChan
-	cancel()
+	// Wait for all goroutines to complete
+	if err := eg.Wait(); err != nil && err != context.Canceled {
+		log.Printf("Error during shutdown: %v", err)
+	}
 
-	// sleep for 10s to wait for existing routines to finish
-	time.Sleep(10 * time.Second)
+	// Final cleanup
+	if err := tp.Shutdown(ctx); err != nil && err != context.Canceled {
+		log.Printf("Error shutting down tracer provider: %v", err)
+	}
+
+	log.Println("Shutdown complete")
 }
