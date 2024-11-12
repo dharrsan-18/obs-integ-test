@@ -1,0 +1,31 @@
+%YAML 1.1
+---
+
+logging:
+  default-log-level: debug
+
+outputs:  
+  - eve-log:     
+      enabled: yes
+      filetype: regular #regular|syslog|unix_dgram|unix_stream|redis
+      filename: eve.json
+      types:
+        - http:
+            extended: yes
+            dump-all-headers: both
+        - metadata:
+            enabled: yes  # Enable metadata output if you need it
+
+  - lua:
+      enabled: yes
+      scripts-dir: /root/suricata-7.0.7/lua/
+      scripts:
+        - http.lua
+
+default-rule-path: /root/suricata-7.0.7/rules/
+rule-files:
+  - suricata.rules  # Specify your rules file here
+
+af-packet:
+  - interface: ${NETWORK_INTERFACE}  # Replace 'eth0' with your active network interface
+    cluster-type: cluster_flow
