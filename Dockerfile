@@ -1,14 +1,15 @@
 FROM golang:1.22-bullseye AS builder
 WORKDIR /app
 
-# Copy the application source files
-COPY . .
-
-# Initialize a new module and tidy up dependencies
-RUN go mod init myapp && go mod tidy
+# Copy only necessary files for building
+COPY go.* ./
+COPY *.go ./
 
 # Build the Go application
-RUN go build -o main .
+RUN go mod init myapp && \
+    go mod tidy && \
+    go build -o main .
+
 
 # Use Amazon Linux 2023 as the base image
 FROM amazonlinux:2023
