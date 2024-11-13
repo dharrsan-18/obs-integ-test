@@ -40,7 +40,6 @@ RUN dnf update -y && \
     libpcap-devel \
     libnet-devel \
     libnetfilter_queue-devel && \
-    jq && \
     dnf clean all && \
     rm -rf /var/cache/dnf/*
 
@@ -53,7 +52,7 @@ COPY env.json /root/env.json
 
 # Read the Suricata version from the JSON file
 ARG SURICATA_VERSION
-RUN SURICATA_VERSION=$(jq -r '.suricata_version' /root/env.json) && \
+RUN SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json) && \
     curl -LO https://www.openinfosecfoundation.org/download/suricata-${SURICATA_VERSION}.tar.gz && \
     tar xzvf suricata-${SURICATA_VERSION}.tar.gz && \
     cd suricata-${SURICATA_VERSION} && \
