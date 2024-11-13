@@ -61,9 +61,6 @@ RUN export SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/e
     cd .. && \
     rm -rf suricata-${SURICATA_VERSION}.tar.gz
 
-# Set the Suricata version as an environment variable for later use
-ENV SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json)
-
 # Create the obs-integ directory
 WORKDIR /root/obs-integ
 
