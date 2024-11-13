@@ -22,9 +22,9 @@ outputs:
       scripts:
         - http.lua
 
-default-rule-path: /root/suricata-7.0.7/rules/
-rule-files:
-  - suricata.rules  # Specify your rules file here
+# default-rule-path: /root/suricata-7.0.7/rules/
+# rule-files:
+#   - suricata.rules  # Specify your rules file here
 
 af-packet:
   - interface: ${NETWORK_INTERFACE}  # Replace 'eth0' with your active network interface

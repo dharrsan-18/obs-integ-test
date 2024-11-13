@@ -63,7 +63,7 @@ RUN SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json
     rm -rf suricata-${SURICATA_VERSION}.tar.gz
 
 # RUN mkdir -p /var/log/suricata && \
- RUN mkdir -p /etc/suricata/rules && \
+#  RUN mkdir -p /etc/suricata/rules && \
     # chmod -R 755 /var/log/suricata && \
     # chmod -R 755 /var/run/suricata && \
     # chmod -R 755 /etc/suricata
