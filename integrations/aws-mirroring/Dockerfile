@@ -3,7 +3,6 @@ FROM golang:1.22-bullseye AS builder
 WORKDIR /app
 
 # Copy necessary files for building
-COPY go.* ./
 COPY *.go ./
 
 # Build the Go application
