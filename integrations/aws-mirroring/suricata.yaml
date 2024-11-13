@@ -5,16 +5,16 @@ logging:
   default-log-level: debug
 
 outputs:  
-  - eve-log:     
-      enabled: yes
-      filetype: regular #regular|syslog|unix_dgram|unix_stream|redis
-      filename: eve.json
-      types:
-        - http:
-            extended: yes
-            dump-all-headers: both
-        - metadata:
-            enabled: yes  # Enable metadata output if you need it
+  # - eve-log:     
+  #     enabled: no
+  #     filetype: regular #regular|syslog|unix_dgram|unix_stream|redis
+  #     filename: eve.json
+  #     types:
+  #       - http:
+  #           extended: yes
+  #           dump-all-headers: both
+  #       - metadata:
+  #           enabled: yes  # Enable metadata output if you need it
 
   - lua:
       enabled: yes
