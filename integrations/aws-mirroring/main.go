@@ -15,7 +15,7 @@ import (
 
 // pointer for suricataHTTPEvent
 type Channels struct {
-	LogsChan           chan suricataHTTPEvent
+	LogsChan           chan *suricataHTTPEvent
 	OtelAttributesChan chan OTELAttributes
 }
 
@@ -65,7 +65,7 @@ func main() {
 	}
 
 	channels := &Channels{
-		LogsChan:           make(chan suricataHTTPEvent, 5),
+		LogsChan:           make(chan *suricataHTTPEvent, 5),
 		OtelAttributesChan: make(chan OTELAttributes, 5),
 	}
 

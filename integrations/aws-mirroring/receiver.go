@@ -136,7 +136,7 @@ func receiverFunc(ctx context.Context, ch *Channels, iface string) error {
 			return ctx.Err()
 		default:
 			data := scanner.Bytes()
-			event := suricataHTTPEvent{}
+			event := &suricataHTTPEvent{}
 			if err := json.Unmarshal(data, &event); err == nil {
 				ch.LogsChan <- event
 			}

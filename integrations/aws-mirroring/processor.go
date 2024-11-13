@@ -87,7 +87,7 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 	}
 }
 
-func mapEventToOTEL(event suricataHTTPEvent) OTELAttributes {
+func mapEventToOTEL(event *suricataHTTPEvent) OTELAttributes {
 	attrs := OTELAttributes{}
 
 	// Extract HTTP method, target, and flavor from request-line
