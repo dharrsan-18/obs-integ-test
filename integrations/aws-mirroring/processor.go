@@ -6,6 +6,8 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 const maxBodySize = 1 * 1024 * 1024 // 1MB in bytes
@@ -38,6 +40,11 @@ func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 		}
 	}
 	return false
+}
+
+func isValidUUID(uuidStr string) bool {
+	_, err := uuid.Parse(uuidStr)
+	return err == nil
 }
 
 func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
@@ -79,6 +86,11 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 			// Populate service fields from config
 			otelAttrs.SensorVersion = config.ServiceVersion
 			otelAttrs.SensorID = config.SensorID
+
+			if !isValidUUID(otelAttrs.SensorID) {
+				log.Printf("Invalid SensorID %s, dropping trace", otelAttrs.SensorID)
+				continue
+			}
 
 			// Send to OTEL layer
 			ch.OtelAttributesChan <- otelAttrs
