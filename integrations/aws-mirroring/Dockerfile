@@ -61,6 +61,14 @@ RUN export SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/e
     cd .. && \
     rm -rf suricata-${SURICATA_VERSION}.tar.gz
 
+RUN mkdir -p /var/log/suricata && \
+    mkdir -p /var/run/suricata && \
+    mkdir -p /etc/suricata/rules && \
+    chmod -R 755 /var/log/suricata && \
+    chmod -R 755 /var/run/suricata && \
+    chmod -R 755 /etc/suricata
+
+
 # Create the obs-integ directory
 WORKDIR /root/obs-integ
 
