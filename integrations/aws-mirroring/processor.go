@@ -78,7 +78,7 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 
 			// Populate service fields from config
 			otelAttrs.SensorVersion = config.ServiceVersion
-			otelAttrs.SensorID = config.ServiceName
+			otelAttrs.SensorID = config.SensorID
 
 			// Send to OTEL layer
 			ch.OtelAttributesChan <- otelAttrs

@@ -21,8 +21,9 @@ type Channels struct {
 
 type Config struct {
 	NetworkInterface      string   `json:"network-interface"`
-	ServiceName           string   `json:"service_name"`
-	ServiceVersion        string   `json:"service_version"`
+	SensorID              string   `json:"sensor-id"`
+	ServiceName           string   `json:"service-name"`
+	ServiceVersion        string   `json:"service-version"`
 	OtelCollectorEndpoint string   `json:"otel-collector-endpoint"`
 	AcceptHosts           []string `json:"accept-hosts"`
 	DenyContentTypes      []string `json:"deny-content-type"`
