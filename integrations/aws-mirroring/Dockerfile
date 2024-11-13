@@ -71,8 +71,8 @@ COPY --from=builder /app/main /root/obs-integ/main
 COPY env.json /root/obs-integ/env.json
 
 # Copy Suricata configuration and Lua script files using the dynamic version
-COPY suricata.yaml /root/suricata-${SURICATA_VERSION}/suricata.yaml
-COPY http.lua /root/suricata-${SURICATA_VERSION}/lua/http.lua
+COPY suricata.yaml /root/obs-integ/suricata.yaml
+COPY http.lua /root/obs-integ/http.lua
 
 # Set executable permission
 RUN chmod +x /root/obs-integ/main

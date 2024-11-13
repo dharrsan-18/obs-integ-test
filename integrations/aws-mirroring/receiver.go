@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-const originalSuricataYamlPath string = "/root/suricata-7.0.7/suricata.yaml"
-const tempSuricataYamlPath string = "/root/suricata-7.0.7/temp-suricata.yaml"
+const originalSuricataYamlPath string = "/root/obs-integ/suricata.yaml"
+const tempSuricataYamlPath string = "/root/obs-integ/temp-suricata.yaml"
 
 // make pointers
 type suricataHTTPEvent struct {
