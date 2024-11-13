@@ -50,9 +50,8 @@ WORKDIR /root
 # Copy the JSON configuration file directly from the host
 COPY env.json /root/env.json
 
-# Read the Suricata version from the JSON file
-ARG SURICATA_VERSION
-RUN SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json) && \
+# Extract and set the Suricata version as an environment variable
+RUN export SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json) && \
     curl -LO https://www.openinfosecfoundation.org/download/suricata-${SURICATA_VERSION}.tar.gz && \
     tar xzvf suricata-${SURICATA_VERSION}.tar.gz && \
     cd suricata-${SURICATA_VERSION} && \
@@ -62,11 +61,8 @@ RUN SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json
     cd .. && \
     rm -rf suricata-${SURICATA_VERSION}.tar.gz
 
-# RUN mkdir -p /var/log/suricata && \
-#  RUN mkdir -p /etc/suricata/rules && \
-    # chmod -R 755 /var/log/suricata && \
-    # chmod -R 755 /var/run/suricata && \
-    # chmod -R 755 /etc/suricata
+# Set the Suricata version as an environment variable for later use
+ENV SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json)
 
 # Create the obs-integ directory
 WORKDIR /root/obs-integ
@@ -77,7 +73,7 @@ COPY --from=builder /app/main /root/obs-integ/main
 # Copy the env.json file to the obs-integ directory
 COPY env.json /root/obs-integ/env.json
 
-# Copy Suricata configuration and Lua script files
+# Copy Suricata configuration and Lua script files using the dynamic version
 COPY suricata.yaml /root/suricata-${SURICATA_VERSION}/suricata.yaml
 COPY http.lua /root/suricata-${SURICATA_VERSION}/lua/http.lua
 
