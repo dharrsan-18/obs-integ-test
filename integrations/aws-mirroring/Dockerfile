@@ -1,7 +1,8 @@
+# Use a multi-stage build to compile the Go application
 FROM golang:1.22-bullseye AS builder
 WORKDIR /app
 
-# Copy only necessary files for building
+# Copy necessary files for building
 COPY go.* ./
 COPY *.go ./
 
@@ -9,7 +10,6 @@ COPY *.go ./
 RUN go mod init myapp && \
     go mod tidy && \
     go build -o main .
-
 
 # Use Amazon Linux 2023 as the base image
 FROM amazonlinux:2023
@@ -47,15 +47,20 @@ RUN yum install lua-json -y
 
 WORKDIR /root
 
-# Download and build Suricata
-RUN curl -LO https://www.openinfosecfoundation.org/download/suricata-7.0.7.tar.gz && \
-    tar xzvf suricata-7.0.7.tar.gz && \
-    cd suricata-7.0.7 && \
+# Copy the JSON configuration file directly from the host
+COPY env.json /root/env.json
+
+# Read the Suricata version from the JSON file
+ARG SURICATA_VERSION
+RUN SURICATA_VERSION=$(jq -r '.suricata_version' /root/env.json) && \
+    curl -LO https://www.openinfosecfoundation.org/download/suricata-${SURICATA_VERSION}.tar.gz && \
+    tar xzvf suricata-${SURICATA_VERSION}.tar.gz && \
+    cd suricata-${SURICATA_VERSION} && \
     ./configure --enable-lua && \
     make && \
     make install && \
     cd .. && \
-    rm -rf suricata-7.0.7.tar.gz
+    rm -rf suricata-${SURICATA_VERSION}.tar.gz
 
 RUN mkdir -p /var/log/suricata && \
     mkdir -p /var/run/suricata && \
@@ -64,19 +69,20 @@ RUN mkdir -p /var/log/suricata && \
     chmod -R 755 /var/run/suricata && \
     chmod -R 755 /etc/suricata
 
-
 # Create the obs-integ directory
 WORKDIR /root/obs-integ
 
 # Copy the compiled Go binary from the builder stage
 COPY --from=builder /app/main /root/obs-integ/main
-COPY --from=builder /app/env.json /root/obs-integ/env.json
+
+# Copy the env.json file to the obs-integ directory
+COPY env.json /root/obs-integ/env.json
 
 # Copy Suricata configuration and Lua script files
-COPY suricata.yaml /root/suricata-7.0.7/suricata.yaml
-COPY http.lua /root/suricata-7.0.7/lua/http.lua
+COPY suricata.yaml /root/suricata-${SURICATA_VERSION}/suricata.yaml
+COPY http.lua /root/suricata-${SURICATA_VERSION}/lua/http.lua
 
-# Set executable perimission
+# Set executable permission
 RUN chmod +x /root/obs-integ/main
 
 # Command to run the application
