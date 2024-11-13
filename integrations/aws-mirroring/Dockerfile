@@ -40,6 +40,7 @@ RUN dnf update -y && \
     libpcap-devel \
     libnet-devel \
     libnetfilter_queue-devel && \
+    jq && \
     dnf clean all && \
     rm -rf /var/cache/dnf/*
 
