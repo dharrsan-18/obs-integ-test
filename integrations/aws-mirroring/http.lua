@@ -36,8 +36,8 @@ function log(args)
     }
 
     -- Handle request headers
-    output.request.header["request-line"] = HttpGetRequestLine() or ""
-    output.request.header["Host"] = HttpGetRequestHost() or ""
+    output.request.header["request-line"] = HttpGetRequestLine()
+    output.request.header["Host"] = HttpGetRequestHost()
     
     -- Get all request headers dynamically
     local request_headers = HttpGetRequestHeaders()
