@@ -1,10 +1,11 @@
-package main
+package layers
 
 import (
 	"context"
 	"fmt"
 	"log"
 
+	"github.com/getastra/obs-integrations/integrations/aws-mirroring/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -13,7 +14,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-func initExporter(ctx context.Context, config *Config) (*sdktrace.TracerProvider, error) {
+func InitExporter(ctx context.Context, config *config.Config) (*sdktrace.TracerProvider, error) {
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
@@ -44,7 +45,7 @@ func initExporter(ctx context.Context, config *Config) (*sdktrace.TracerProvider
 	return tp, nil
 }
 
-func exportFunc(ctx context.Context, ch *Channels) error {
+func ExportFunc(ctx context.Context, ch *Channels) error {
 	tracer := otel.GetTracerProvider().Tracer("http-monitor")
 
 	for {

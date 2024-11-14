@@ -1,4 +1,4 @@
-package main
+package layers
 
 import (
 	"bufio"
@@ -15,32 +15,6 @@ import (
 
 const originalSuricataYamlPath string = "/root/obs-integ/suricata.yaml"
 const tempSuricataYamlPath string = "/root/obs-integ/temp-suricata.yaml"
-
-// make pointers
-type suricataHTTPEvent struct {
-	Request  *HTTPRequest  `json:"request"`
-	Response *HTTPResponse `json:"response"`
-	Metadata *HTTPMetadata `json:"metadata"`
-}
-
-type HTTPMetadata struct {
-	Timestamp string `json:"timestamp"`
-	SrcPort   int    `json:"src_port"`
-	SrcIP     string `json:"src_ip"`
-	DestPort  int    `json:"dest_port"`
-	DestIP    string `json:"dest_ip"`
-}
-
-// make map[string]interface{}
-type HTTPRequest struct {
-	Header map[string]interface{} `json:"header"`
-	Body   string                 `json:"body"`
-}
-
-type HTTPResponse struct {
-	Header map[string]interface{} `json:"header"`
-	Body   string                 `json:"body"`
-}
 
 func getFirstNonLoopbackInterface() (string, error) {
 	interfaces, err := net.Interfaces()
@@ -95,7 +69,7 @@ func updateSuricataConfig(iface string) error {
 	return nil
 }
 
-func receiverFunc(ctx context.Context, ch *Channels, iface string) error {
+func ReceiverFunc(ctx context.Context, ch *Channels, iface string) error {
 	var err error
 	if iface == "" {
 		iface, err = getFirstNonLoopbackInterface() // Use '=' to update the existing 'iface' variable
@@ -136,7 +110,7 @@ func receiverFunc(ctx context.Context, ch *Channels, iface string) error {
 			return ctx.Err()
 		default:
 			data := scanner.Bytes()
-			event := &suricataHTTPEvent{}
+			event := &SuricataHTTPEvent{}
 			if err := json.Unmarshal(data, event); err == nil {
 				ch.LogsChan <- event
 			}

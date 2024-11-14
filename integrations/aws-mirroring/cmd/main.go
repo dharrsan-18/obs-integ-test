@@ -2,71 +2,35 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/getastra/obs-integrations/integrations/aws-mirroring/config"
+	"github.com/getastra/obs-integrations/integrations/aws-mirroring/layers"
 	"golang.org/x/sync/errgroup"
 )
 
-// pointer for suricataHTTPEvent
-type Channels struct {
-	LogsChan           chan *suricataHTTPEvent
-	OtelAttributesChan chan *OTELAttributes
-}
-
-type Config struct {
-	NetworkInterface      string   `json:"network-interface"`
-	SensorID              string   `json:"sensor-id"`
-	ServiceName           string   `json:"service-name"`
-	ServiceVersion        string   `json:"service-version"`
-	OtelCollectorEndpoint string   `json:"otel-collector-endpoint"`
-	AcceptHosts           []string `json:"accept-hosts"`
-	DenyContentTypes      []string `json:"deny-content-type"`
-}
-
-func loadConfig(filename string) (*Config, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	bytes, err := io.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	var config Config
-	if err := json.Unmarshal(bytes, &config); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-}
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	eg, ctx := errgroup.WithContext(ctx)
 
-	config, err := loadConfig("env.json")
+	config, err := config.LoadConfig("../env.json")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	tp, err := initExporter(ctx, config)
+	tp, err := layers.InitExporter(ctx, config)
 	if err != nil {
 		log.Fatalf("Failed to initialize exporter: %v", err)
 	}
 
-	channels := &Channels{
-		LogsChan:           make(chan *suricataHTTPEvent, 5),
-		OtelAttributesChan: make(chan *OTELAttributes, 5),
+	channels := &layers.Channels{
+		LogsChan:           make(chan *layers.SuricataHTTPEvent, 5),
+		OtelAttributesChan: make(chan *layers.OTELAttributes, 5),
 	}
 
 	// Handle shutdown signals
@@ -92,16 +56,16 @@ func main() {
 
 	// Start receiver
 	eg.Go(func() error {
-		return receiverFunc(ctx, channels, config.NetworkInterface)
+		return layers.ReceiverFunc(ctx, channels, config.NetworkInterface)
 	})
 
 	// Start processors and exporters
 	for i := 0; i < 5; i++ {
 		eg.Go(func() error {
-			return processorFunc(ctx, channels, config)
+			return layers.ProcessorFunc(ctx, channels, config)
 		})
 		eg.Go(func() error {
-			return exportFunc(ctx, channels)
+			return layers.ExportFunc(ctx, channels)
 		})
 	}
 

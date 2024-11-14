@@ -1,4 +1,4 @@
-package main
+package layers
 
 import (
 	"context"
@@ -7,28 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/getastra/obs-integrations/integrations/aws-mirroring/config"
 	"github.com/google/uuid"
 )
 
 const maxBodySize = 1 * 1024 * 1024 // 1MB in bytes
-
-type OTELAttributes struct {
-	HTTPMethod      string
-	HTTPFlavor      string
-	HTTPTarget      string
-	HTTPHost        string
-	HTTPStatusCode  int
-	HTTPScheme      string
-	NetHostPort     int
-	NetPeerIP       string
-	NetPeerPort     int
-	SensorVersion   string
-	SensorID        string
-	RequestBody     string
-	RequestHeaders  string
-	ResponseHeaders string
-	ResponseBody    string
-}
 
 func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 	for _, denyContentType := range denyContentTypes {
@@ -47,9 +30,7 @@ func isValidUUID(uuidStr string) bool {
 	return err == nil
 }
 
-// ... existing code ...
-
-func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
+func ProcessorFunc(ctx context.Context, ch *Channels, config *config.Config) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range config.AcceptHosts {
 		acceptSet[host] = struct{}{}
@@ -106,7 +87,7 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 	}
 }
 
-func mapEventToOTEL(event *suricataHTTPEvent) *OTELAttributes {
+func mapEventToOTEL(event *SuricataHTTPEvent) *OTELAttributes {
 	attrs := OTELAttributes{}
 
 	// Extract HTTP method, target, and flavor from request-line
