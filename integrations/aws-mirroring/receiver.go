@@ -18,9 +18,9 @@ const tempSuricataYamlPath string = "/root/obs-integ/temp-suricata.yaml"
 
 // make pointers
 type suricataHTTPEvent struct {
-	Request  HTTPRequest  `json:"request"`
-	Response HTTPResponse `json:"response"`
-	Metadata HTTPMetadata `json:"metadata"`
+	Request  *HTTPRequest  `json:"request"`
+	Response *HTTPResponse `json:"response"`
+	Metadata *HTTPMetadata `json:"metadata"`
 }
 
 type HTTPMetadata struct {
@@ -33,13 +33,13 @@ type HTTPMetadata struct {
 
 // make map[string]interface{}
 type HTTPRequest struct {
-	Header map[string]string `json:"header"`
-	Body   string            `json:"body"`
+	Header map[string]interface{} `json:"header"`
+	Body   string                 `json:"body"`
 }
 
 type HTTPResponse struct {
-	Header map[string]string `json:"header"`
-	Body   string            `json:"body"`
+	Header map[string]interface{} `json:"header"`
+	Body   string                 `json:"body"`
 }
 
 func getFirstNonLoopbackInterface() (string, error) {

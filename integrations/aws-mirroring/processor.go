@@ -47,6 +47,8 @@ func isValidUUID(uuidStr string) bool {
 	return err == nil
 }
 
+// ... existing code ...
+
 func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range config.AcceptHosts {
@@ -62,14 +64,19 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 			}
 
 			// Check if the hostname is accepted
-			if _, hostAccepted := acceptSet[event.Request.Header["Host"]]; !hostAccepted {
-				log.Printf("Host %s is not accepted, skipping event", event.Request.Header["Host"])
+			if host, ok := event.Request.Header["Host"].(string); ok {
+				if _, hostAccepted := acceptSet[host]; !hostAccepted {
+					log.Printf("Host %s is not accepted, skipping event", host)
+					continue
+				}
+			} else {
+				log.Printf("Host is not a string, skipping event")
 				continue
 			}
 
 			// Deny if the request or response content types contain any denied substring
-			reqContentType := event.Request.Header["Content-Type"]
-			respContentType := event.Response.Header["Content-Type"]
+			reqContentType, _ := event.Request.Header["Content-Type"].(string)
+			respContentType, _ := event.Response.Header["Content-Type"].(string)
 			if isContentTypeDenied(reqContentType, config.DenyContentTypes) ||
 				isContentTypeDenied(respContentType, config.DenyContentTypes) {
 				log.Printf("Content-Type is denied, skipping event")
@@ -99,11 +106,11 @@ func processorFunc(ctx context.Context, ch *Channels, config *Config) error {
 	}
 }
 
-func mapEventToOTEL(event *suricataHTTPEvent) OTELAttributes {
+func mapEventToOTEL(event *suricataHTTPEvent) *OTELAttributes {
 	attrs := OTELAttributes{}
 
 	// Extract HTTP method, target, and flavor from request-line
-	if requestLine, ok := event.Request.Header["request-line"]; ok {
+	if requestLine, ok := event.Request.Header["request-line"].(string); ok {
 		parts := strings.Split(requestLine, " ")
 		if len(parts) >= 2 {
 			attrs.HTTPMethod = parts[0] // GET, POST, etc.
@@ -115,10 +122,12 @@ func mapEventToOTEL(event *suricataHTTPEvent) OTELAttributes {
 	}
 
 	// Get host from headers
-	attrs.HTTPHost = event.Request.Header["Host"]
+	if host, ok := event.Request.Header["Host"].(string); ok {
+		attrs.HTTPHost = host
+	}
 
 	// Extract status code from response-line
-	if responseLine, ok := event.Response.Header["response-line"]; ok {
+	if responseLine, ok := event.Response.Header["response-line"].(string); ok {
 		parts := strings.Split(responseLine, " ")
 		if len(parts) >= 2 {
 			if statusCode, err := strconv.Atoi(parts[1]); err == nil {
@@ -150,5 +159,5 @@ func mapEventToOTEL(event *suricataHTTPEvent) OTELAttributes {
 		attrs.ResponseHeaders = string(respHeadersBytes)
 	}
 
-	return attrs
+	return &attrs
 }

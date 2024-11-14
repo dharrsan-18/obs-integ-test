@@ -16,7 +16,7 @@ import (
 // pointer for suricataHTTPEvent
 type Channels struct {
 	LogsChan           chan *suricataHTTPEvent
-	OtelAttributesChan chan OTELAttributes
+	OtelAttributesChan chan *OTELAttributes
 }
 
 type Config struct {
@@ -66,7 +66,7 @@ func main() {
 
 	channels := &Channels{
 		LogsChan:           make(chan *suricataHTTPEvent, 5),
-		OtelAttributesChan: make(chan OTELAttributes, 5),
+		OtelAttributesChan: make(chan *OTELAttributes, 5),
 	}
 
 	// Handle shutdown signals
