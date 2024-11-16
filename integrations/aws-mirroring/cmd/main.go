@@ -29,7 +29,7 @@ func main() {
 	defer cancel()
 	eg, ctx := errgroup.WithContext(ctx)
 
-	suricataConfig, err := config.LoadSuricataConfig(filepath.Join(path, "mirror-setting.json"))
+	suricataConfig, err := config.LoadSuricataConfig(filepath.Join(path, "mirror-settings.json"))
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
