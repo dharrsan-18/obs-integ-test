@@ -1,5 +1,5 @@
 # Use a multi-stage build to compile the Go application
-FROM golang:1.22-bullseye AS builder
+FROM golang:1.23-bullseye AS builder
 WORKDIR /app
 
 # Copy necessary files for building
