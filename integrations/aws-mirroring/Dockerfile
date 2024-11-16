@@ -4,11 +4,13 @@ FROM golang:${GO_VERSION}-bullseye AS builder
 WORKDIR /app
 
 # Copy necessary files for building
-COPY . .
+COPY cmd ./
+COPY config ./
+COPY layers ./
 
 
 # Build the Go application
-RUN go mod init myapp && \
+RUN go mod init github.com/getastra/obs-integrations/integrations/aws-mirroring && \
     go mod tidy && \
     go build -o main ./cmd
 
