@@ -2,7 +2,7 @@
 ARG GO_VERSION
 FROM golang:${GO_VERSION}-bullseye AS builder
 
-WORKDIR /go/src/github.com/getastra/obs-integrations/integrations/aws-mirroring
+WORKDIR /app
 
 # Copy necessary files for building
 COPY cmd ./
