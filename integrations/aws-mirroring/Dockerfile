@@ -10,7 +10,7 @@ COPY layers ./
 
 
 # Build the Go application
-RUN go mod init github.com/getastra/obs-integrations/integrations/aws-mirroring && \
+RUN go mod init "github.com/getastra/obs-integrations/integrations/aws-mirroring" && \
     go mod edit -replace github.com/getastra/obs-integrations/integrations/aws-mirroring=./ && \
     go mod tidy && \
     go build -o main ./cmd
