@@ -77,7 +77,7 @@ RUN mkdir -p /var/log/suricata && \
 WORKDIR /root/obs-integ
 
 # Copy the compiled Go binary from the builder stage
-COPY --from=builder WORKDIR /go/src/github.com/getastra/obs-integrations/integrations/aws-mirroring/main /root/obs-integ/main
+COPY --from=builder /app/main /root/obs-integ/main
 
 # Copy the env.json file to the obs-integ directory
 COPY env.json /root/obs-integ/env.json
