@@ -52,7 +52,7 @@ RUN yum install lua-json -y
 WORKDIR /root
 
 # Copy the JSON configuration file directly from the host
-COPY env.json /root/env.json
+COPY mirror-settings.json /root/mirror-settings.json
 
 # Extract and set the Suricata version as an environment variable
 ARG SURICATA_VERSION
@@ -79,8 +79,8 @@ WORKDIR /root/obs-integ
 # Copy the compiled Go binary from the builder stage
 COPY --from=builder /app/main /root/obs-integ/main
 
-# Copy the env.json file to the obs-integ directory
-COPY env.json /root/obs-integ/env.json
+# Copy the mirror-settings.json file to the obs-integ directory
+COPY mirror-settings.json /root/obs-integ/mirror-settings.json
 
 # Copy Suricata configuration and Lua script files using the dynamic version
 COPY suricata.yaml /root/obs-integ/suricata.yaml
