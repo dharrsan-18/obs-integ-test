@@ -11,7 +11,7 @@ COPY layers ./
 
 
 # Build the Go application
-RUN go mod init "mirroring" && \
+RUN go mod init mirroring && \
     go mod tidy && \
     go build -o main ./cmd
 
