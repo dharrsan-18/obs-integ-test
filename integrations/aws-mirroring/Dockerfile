@@ -5,9 +5,9 @@ FROM golang:${GO_VERSION}-bullseye AS builder
 WORKDIR /app
 
 # Copy necessary files for building
-COPY cmd ./
-COPY config ./
-COPY layers ./
+COPY cmd ./cmd/
+COPY config ./config/
+COPY layers ./layers/
 
 
 # Build the Go application
