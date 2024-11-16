@@ -81,6 +81,7 @@ COPY --from=builder /app/main /root/obs-integ/main
 
 # Copy the mirror-settings.json file to the obs-integ directory
 COPY mirror-settings.json /root/obs-integ/mirror-settings.json
+COPY .env /root/obs-integ/.env
 
 # Copy Suricata configuration and Lua script files using the dynamic version
 COPY suricata.yaml /root/obs-integ/suricata.yaml
