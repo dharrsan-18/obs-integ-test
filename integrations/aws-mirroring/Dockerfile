@@ -53,8 +53,7 @@ COPY env.json /root/env.json
 
 # Extract and set the Suricata version as an environment variable
 ARG SURICATA_VERSION
-RUN export SURICATA_VERSION=$(SURICATA_VERSION) && \
-    curl -LO https://www.openinfosecfoundation.org/download/suricata-${SURICATA_VERSION}.tar.gz && \
+RUN curl -LO https://www.openinfosecfoundation.org/download/suricata-${SURICATA_VERSION}.tar.gz && \
     tar xzvf suricata-${SURICATA_VERSION}.tar.gz && \
     cd suricata-${SURICATA_VERSION} && \
     ./configure --enable-lua && \
