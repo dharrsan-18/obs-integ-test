@@ -31,9 +31,9 @@ func isValidUUID(uuidStr string) bool {
 	return err == nil
 }
 
-func ProcessorFunc(ctx context.Context, ch *Channels, config *config.SuricataConfig) error {
+func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.SuricataConfig) error {
 	acceptSet := make(map[string]struct{})
-	for _, host := range config.AcceptHosts {
+	for _, host := range suricataConfig.AcceptHosts {
 		acceptSet[host] = struct{}{}
 	}
 	for {
@@ -59,8 +59,8 @@ func ProcessorFunc(ctx context.Context, ch *Channels, config *config.SuricataCon
 			// Deny if the request or response content types contain any denied substring
 			reqContentType, _ := event.Request.Header["Content-Type"].(string)
 			respContentType, _ := event.Response.Header["Content-Type"].(string)
-			if isContentTypeDenied(reqContentType, config.DenyContentTypes) ||
-				isContentTypeDenied(respContentType, config.DenyContentTypes) {
+			if isContentTypeDenied(reqContentType, suricataConfig.DenyContentTypes) ||
+				isContentTypeDenied(respContentType, suricataConfig.DenyContentTypes) {
 				log.Printf("Content-Type is denied, skipping event")
 				continue
 			}
@@ -73,8 +73,8 @@ func ProcessorFunc(ctx context.Context, ch *Channels, config *config.SuricataCon
 			otelAttrs := mapEventToOTEL(event)
 
 			// Populate service fields from config
-			otelAttrs.SensorVersion = config.ServiceVersion
-			otelAttrs.SensorID = config.SensorID
+			otelAttrs.SensorVersion = suricataConfig.ServiceVersion
+			otelAttrs.SensorID = suricataConfig.SensorID
 
 			if !isValidUUID(otelAttrs.SensorID) {
 				log.Printf("Invalid SensorID %s, dropping trace", otelAttrs.SensorID)

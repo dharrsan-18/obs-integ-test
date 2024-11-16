@@ -39,7 +39,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	tp, err := layers.InitExporter(ctx, suricataConfig)
+	tp, err := layers.InitExporter(ctx, suricataConfig, envConfig)
 	if err != nil {
 		log.Fatalf("Failed to initialize exporter: %v", err)
 	}
@@ -59,11 +59,10 @@ func main() {
 			cancel()
 
 			// Close channels
-			close(channels.LogsChan)
-			close(channels.OtelAttributesChan)
-
 			// Wait for 10 seconds
 			time.Sleep(10 * time.Second)
+			close(channels.LogsChan)
+			close(channels.OtelAttributesChan)
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -81,7 +80,7 @@ func main() {
 			return layers.ProcessorFunc(ctx, channels, suricataConfig)
 		})
 		eg.Go(func() error {
-			return layers.ExportFunc(ctx, channels)
+			return layers.ExportFunc(ctx, channels, envConfig)
 		})
 	}
 

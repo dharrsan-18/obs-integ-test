@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -21,7 +22,14 @@ type SuricataConfig struct {
 }
 
 type EnvConfig struct {
-	Routines int
+	Routines              int           `env:"routines,required"`
+	OTELBatchTimeout      time.Duration `env:"OTEL_BATCH_TIMEOUT,default=5s"`
+	OTELMaxBatchSize      int           `env:"OTEL_MAX_BATCH_SIZE,default=512"`
+	OTELMaxQueueSize      int           `env:"OTEL_MAX_QUEUE_SIZE,default=2048"`
+	OTELExportTimeout     time.Duration `env:"OTEL_EXPORT_TIMEOUT,default=30s"`
+	OTELRetryInitInterval time.Duration `env:"OTEL_RETRY_INITIAL_INTERVAL,default=1s"`
+	OTELRetryMaxInterval  time.Duration `env:"OTEL_RETRY_MAX_INTERVAL,default=5s"`
+	OTELRetryMaxElapsed   time.Duration `env:"OTEL_RETRY_MAX_ELAPSED_TIME,default=30s"`
 }
 
 func LoadSuricataConfig(filename string) (*SuricataConfig, error) {

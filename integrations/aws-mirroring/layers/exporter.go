@@ -15,11 +15,18 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-func InitExporter(ctx context.Context, SuricataConfig *config.SuricataConfig) (*sdktrace.TracerProvider, error) {
+func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) (*sdktrace.TracerProvider, error) {
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(SuricataConfig.OtelCollectorEndpoint), // Adjust endpoint as needed
+		otlptracegrpc.WithEndpoint(suricataConfig.OtelCollectorEndpoint), // Adjust endpoint as needed
+		otlptracegrpc.WithTimeout(envConfig.OTELExportTimeout),
+		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
+			Enabled:         true,
+			InitialInterval: envConfig.OTELRetryInitInterval,
+			MaxInterval:     envConfig.OTELRetryMaxInterval,
+			MaxElapsedTime:  envConfig.OTELRetryMaxElapsed,
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create exporter: %w", err)
@@ -28,8 +35,8 @@ func InitExporter(ctx context.Context, SuricataConfig *config.SuricataConfig) (*
 	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName(SuricataConfig.ServiceName),
-			semconv.ServiceVersion(SuricataConfig.ServiceVersion),
+			semconv.ServiceName(suricataConfig.ServiceName),
+			semconv.ServiceVersion(suricataConfig.ServiceVersion),
 		),
 	)
 	if err != nil {
@@ -38,7 +45,11 @@ func InitExporter(ctx context.Context, SuricataConfig *config.SuricataConfig) (*
 
 	// Create and set TracerProvider
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+		sdktrace.WithBatcher(exporter,
+			sdktrace.WithBatchTimeout(envConfig.OTELBatchTimeout),
+			sdktrace.WithMaxExportBatchSize(envConfig.OTELMaxBatchSize),
+			sdktrace.WithMaxQueueSize(envConfig.OTELMaxQueueSize),
+		),
 		sdktrace.WithResource(res),
 	)
 	otel.SetTracerProvider(tp)
@@ -46,7 +57,7 @@ func InitExporter(ctx context.Context, SuricataConfig *config.SuricataConfig) (*
 	return tp, nil
 }
 
-func ExportFunc(ctx context.Context, ch *Channels) error {
+func ExportFunc(ctx context.Context, ch *Channels, envConfig *config.EnvConfig) error {
 	tracer := otel.GetTracerProvider().Tracer("http-monitor")
 
 	for {
