@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/getastra/obs-integrations/integrations/aws-mirroring/config"
+	"mirroring/config"
+
 	"github.com/google/uuid"
 )
 

@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/getastra/obs-integrations/integrations/aws-mirroring/config"
+	"mirroring/config"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"

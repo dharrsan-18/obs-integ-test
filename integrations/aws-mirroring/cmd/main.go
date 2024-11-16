@@ -9,8 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/getastra/obs-integrations/integrations/aws-mirroring/config"
-	"github.com/getastra/obs-integrations/integrations/aws-mirroring/layers"
+	"mirroring/config"
+	"mirroring/layers"
+
 	"golang.org/x/sync/errgroup"
 )
 
