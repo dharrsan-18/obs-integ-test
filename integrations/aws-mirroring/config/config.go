@@ -58,5 +58,9 @@ func LoadEnvConfig(filename string) (*EnvConfig, error) {
 		Routines: routines,
 	}
 
+	if env.Routines > 50 || env.Routines < 1 {
+		return nil, fmt.Errorf("unsupported number of routines. must be between 1 - 50")
+	}
+
 	return env, nil
 }
