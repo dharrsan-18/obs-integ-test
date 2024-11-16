@@ -1,14 +1,16 @@
 # Use a multi-stage build to compile the Go application
-FROM golang:1.23-bullseye AS builder
+ARG GO_VERSION
+FROM golang:${GO_VERSION}-bullseye AS builder
 WORKDIR /app
 
 # Copy necessary files for building
-COPY *.go ./
+COPY . .
+
 
 # Build the Go application
 RUN go mod init myapp && \
     go mod tidy && \
-    go build -o main .
+    go build -o main ./cmd
 
 # Use Amazon Linux 2023 as the base image
 FROM amazonlinux:2023
@@ -50,7 +52,8 @@ WORKDIR /root
 COPY env.json /root/env.json
 
 # Extract and set the Suricata version as an environment variable
-RUN export SURICATA_VERSION=$(grep -oP '(?<="suricata-version": ")[^"]*' /root/env.json) && \
+ARG SURICATA_VERSION
+RUN export SURICATA_VERSION=$(SURICATA_VERSION) && \
     curl -LO https://www.openinfosecfoundation.org/download/suricata-${SURICATA_VERSION}.tar.gz && \
     tar xzvf suricata-${SURICATA_VERSION}.tar.gz && \
     cd suricata-${SURICATA_VERSION} && \

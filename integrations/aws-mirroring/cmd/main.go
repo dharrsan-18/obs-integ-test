@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -13,24 +14,38 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+func getProjectRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return dir
+}
+
 func main() {
+	path := getProjectRoot()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	eg, ctx := errgroup.WithContext(ctx)
 
-	config, err := config.LoadConfig("../env.json")
+	suricataConfig, err := config.LoadSuricataConfig(filepath.Join(path, "env.json"))
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	tp, err := layers.InitExporter(ctx, config)
+	envConfig, err := config.LoadEnvConfig(filepath.Join(path, "config", ".env"))
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	tp, err := layers.InitExporter(ctx, suricataConfig)
 	if err != nil {
 		log.Fatalf("Failed to initialize exporter: %v", err)
 	}
 
 	channels := &layers.Channels{
-		LogsChan:           make(chan *layers.SuricataHTTPEvent, 5),
-		OtelAttributesChan: make(chan *layers.OTELAttributes, 5),
+		LogsChan:           make(chan *layers.SuricataHTTPEvent, envConfig.Routines),
+		OtelAttributesChan: make(chan *layers.OTELAttributes, envConfig.Routines),
 	}
 
 	// Handle shutdown signals
@@ -56,13 +71,13 @@ func main() {
 
 	// Start receiver
 	eg.Go(func() error {
-		return layers.ReceiverFunc(ctx, channels, config.NetworkInterface)
+		return layers.ReceiverFunc(ctx, channels, suricataConfig.NetworkInterface)
 	})
 
 	// Start processors and exporters
-	for i := 0; i < 5; i++ {
+	for i := 0; i < envConfig.Routines; i++ {
 		eg.Go(func() error {
-			return layers.ProcessorFunc(ctx, channels, config)
+			return layers.ProcessorFunc(ctx, channels, suricataConfig)
 		})
 		eg.Go(func() error {
 			return layers.ExportFunc(ctx, channels)

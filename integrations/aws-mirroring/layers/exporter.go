@@ -14,11 +14,11 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-func InitExporter(ctx context.Context, config *config.Config) (*sdktrace.TracerProvider, error) {
+func InitExporter(ctx context.Context, SuricataConfig *config.SuricataConfig) (*sdktrace.TracerProvider, error) {
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(config.OtelCollectorEndpoint), // Adjust endpoint as needed
+		otlptracegrpc.WithEndpoint(SuricataConfig.OtelCollectorEndpoint), // Adjust endpoint as needed
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create exporter: %w", err)
@@ -27,8 +27,8 @@ func InitExporter(ctx context.Context, config *config.Config) (*sdktrace.TracerP
 	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName(config.ServiceName),
-			semconv.ServiceVersion(config.ServiceVersion),
+			semconv.ServiceName(SuricataConfig.ServiceName),
+			semconv.ServiceVersion(SuricataConfig.ServiceVersion),
 		),
 	)
 	if err != nil {

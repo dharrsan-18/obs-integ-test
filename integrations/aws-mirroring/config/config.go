@@ -2,11 +2,15 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
-type Config struct {
+type SuricataConfig struct {
 	NetworkInterface      string   `json:"network-interface"`
 	SensorID              string   `json:"sensor-id"`
 	ServiceName           string   `json:"service-name"`
@@ -16,7 +20,11 @@ type Config struct {
 	DenyContentTypes      []string `json:"deny-content-type"`
 }
 
-func LoadConfig(filename string) (*Config, error) {
+type EnvConfig struct {
+	Routines int
+}
+
+func LoadSuricataConfig(filename string) (*SuricataConfig, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -28,10 +36,27 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 
-	var config Config
+	var config SuricataConfig
 	if err := json.Unmarshal(bytes, &config); err != nil {
 		return nil, err
 	}
 
 	return &config, nil
+}
+
+func LoadEnvConfig(filename string) (*EnvConfig, error) {
+	if err := godotenv.Load(filename); err != nil {
+		return nil, fmt.Errorf("error loading .env file: %v", err)
+	}
+
+	routines, err := strconv.Atoi(os.Getenv("routines"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse routines: %v", err)
+	}
+
+	env := &EnvConfig{
+		Routines: routines,
+	}
+
+	return env, nil
 }

@@ -30,7 +30,7 @@ func isValidUUID(uuidStr string) bool {
 	return err == nil
 }
 
-func ProcessorFunc(ctx context.Context, ch *Channels, config *config.Config) error {
+func ProcessorFunc(ctx context.Context, ch *Channels, config *config.SuricataConfig) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range config.AcceptHosts {
 		acceptSet[host] = struct{}{}
