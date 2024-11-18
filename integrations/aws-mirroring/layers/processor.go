@@ -3,6 +3,7 @@ package layers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -24,6 +25,25 @@ func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 	return false
 }
 
+func getRequestInfo(event *SuricataHTTPEvent) string {
+	scheme := "http"
+	if event.Metadata.DestPort == 443 {
+		scheme = "https"
+	}
+
+	method := ""
+	path := ""
+	if requestLine, ok := event.Request.Header["request-line"].(string); ok {
+		parts := strings.Split(requestLine, " ")
+		if len(parts) >= 2 {
+			method = parts[0]
+			path = parts[1]
+		}
+	}
+
+	return fmt.Sprintf("scheme=%s method=%s path=%s", scheme, method, path)
+}
+
 func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range suricataConfig.AcceptHosts {
@@ -41,7 +61,7 @@ func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.Sur
 			// Check if the hostname is accepted
 			if host, ok := event.Request.Header["Host"].(string); ok {
 				if _, hostAccepted := acceptSet[host]; !hostAccepted {
-					log.Printf("Host %s is not accepted, skipping event", host)
+					log.Printf("Host %s is not accepted, skipping event: %s", host, getRequestInfo(event))
 					continue
 				}
 			} else {
@@ -54,18 +74,18 @@ func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.Sur
 			respContentType, _ := event.Response.Header["Content-Type"].(string)
 			if isContentTypeDenied(reqContentType, suricataConfig.DenyContentTypes) ||
 				isContentTypeDenied(respContentType, suricataConfig.DenyContentTypes) {
-				log.Printf("Content-Type is denied, skipping event")
+				log.Printf("Content-Type is denied, skipping event: %s", getRequestInfo(event))
 				continue
 			}
 
 			if len(event.Request.Body) > maxBodySize || len(event.Response.Body) > maxBodySize {
-				log.Printf("Request or response body exceeds 1MB, skipping event")
+				log.Printf("Request or response body exceeds 1MB, skipping event: %s", getRequestInfo(event))
 				continue
 			}
 
 			otelAttrs := mapEventToOTEL(event)
 			if otelAttrs == nil {
-				log.Printf("Invalid event data, skipping event")
+				log.Printf("Invalid event data, skipping event: %s", getRequestInfo(event))
 				continue
 			}
 			// Populate service fields from config
