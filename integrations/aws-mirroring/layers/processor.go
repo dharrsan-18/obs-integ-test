@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"mirroring/config"
-
-	"github.com/google/uuid"
 )
 
 const maxBodySize = 1 * 1024 * 1024 // 1MB in bytes
@@ -24,11 +22,6 @@ func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 		}
 	}
 	return false
-}
-
-func isValidUUID(uuidStr string) bool {
-	_, err := uuid.Parse(uuidStr)
-	return err == nil
 }
 
 func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) error {
@@ -75,11 +68,6 @@ func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.Sur
 			// Populate service fields from config
 			otelAttrs.SensorVersion = envConfig.SensorVersion
 			otelAttrs.SensorID = suricataConfig.SensorID
-
-			if !isValidUUID(otelAttrs.SensorID) {
-				log.Printf("Invalid SensorID %s, dropping trace", otelAttrs.SensorID)
-				continue
-			}
 
 			// Send to OTEL layer
 			ch.OtelAttributesChan <- otelAttrs
