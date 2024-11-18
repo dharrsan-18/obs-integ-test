@@ -77,7 +77,7 @@ func main() {
 	// Start processors and exporters
 	for i := 0; i < envConfig.Routines; i++ {
 		eg.Go(func() error {
-			return layers.ProcessorFunc(ctx, channels, suricataConfig)
+			return layers.ProcessorFunc(ctx, channels, suricataConfig, envConfig)
 		})
 		eg.Go(func() error {
 			return layers.ExportFunc(ctx, channels, envConfig)

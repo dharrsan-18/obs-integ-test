@@ -14,15 +14,13 @@ import (
 type SuricataConfig struct {
 	NetworkInterface      string   `json:"network-interface"`
 	SensorID              string   `json:"sensor-id"`
-	ServiceName           string   `json:"service-name"`
-	ServiceVersion        string   `json:"service-version"`
 	OtelCollectorEndpoint string   `json:"otel-collector-endpoint"`
 	AcceptHosts           []string `json:"accept-hosts"`
 	DenyContentTypes      []string `json:"deny-content-type"`
 }
 
 type EnvConfig struct {
-	Routines              int           `env:"routines,required"`
+	Routines              int           `env:"routines,default=10"`
 	OTELBatchTimeout      time.Duration `env:"OTEL_BATCH_TIMEOUT,default=5s"`
 	OTELMaxBatchSize      int           `env:"OTEL_MAX_BATCH_SIZE,default=512"`
 	OTELMaxQueueSize      int           `env:"OTEL_MAX_QUEUE_SIZE,default=2048"`
@@ -30,6 +28,8 @@ type EnvConfig struct {
 	OTELRetryInitInterval time.Duration `env:"OTEL_RETRY_INITIAL_INTERVAL,default=1s"`
 	OTELRetryMaxInterval  time.Duration `env:"OTEL_RETRY_MAX_INTERVAL,default=5s"`
 	OTELRetryMaxElapsed   time.Duration `env:"OTEL_RETRY_MAX_ELAPSED_TIME,default=30s"`
+	SensorVersion         string        `env:"SENSOR_VERSION,required"`
+	SuricataVersion       string        `env:"SURICATA_VERSION,required"`
 }
 
 func LoadSuricataConfig(filename string) (*SuricataConfig, error) {

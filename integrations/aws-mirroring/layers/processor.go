@@ -31,7 +31,7 @@ func isValidUUID(uuidStr string) bool {
 	return err == nil
 }
 
-func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.SuricataConfig) error {
+func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range suricataConfig.AcceptHosts {
 		acceptSet[host] = struct{}{}
@@ -73,7 +73,7 @@ func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.Sur
 			otelAttrs := mapEventToOTEL(event)
 
 			// Populate service fields from config
-			otelAttrs.SensorVersion = suricataConfig.ServiceVersion
+			otelAttrs.SensorVersion = envConfig.SensorVersion
 			otelAttrs.SensorID = suricataConfig.SensorID
 
 			if !isValidUUID(otelAttrs.SensorID) {
