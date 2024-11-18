@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
@@ -32,6 +34,11 @@ type EnvConfig struct {
 	SuricataVersion       string        `env:"SURICATA_VERSION,required"`
 }
 
+func isValidUUID(uuidStr string) bool {
+	_, err := uuid.Parse(uuidStr)
+	return err == nil
+}
+
 func LoadSuricataConfig(filename string) (*SuricataConfig, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -44,12 +51,16 @@ func LoadSuricataConfig(filename string) (*SuricataConfig, error) {
 		return nil, err
 	}
 
-	var config SuricataConfig
-	if err := json.Unmarshal(bytes, &config); err != nil {
+	config := &SuricataConfig{}
+	if err := json.Unmarshal(bytes, config); err != nil {
 		return nil, err
 	}
 
-	return &config, nil
+	if !isValidUUID(config.SensorID) {
+		log.Fatalf("Invalid SensorID %s, dropping trace", config.SensorID)
+	}
+
+	return config, nil
 }
 
 func LoadEnvConfig(filename string) (*EnvConfig, error) {

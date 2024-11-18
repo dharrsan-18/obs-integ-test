@@ -64,7 +64,10 @@ func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.Sur
 			}
 
 			otelAttrs := mapEventToOTEL(event)
-
+			if otelAttrs == nil {
+				log.Printf("Invalid event data, skipping event")
+				continue
+			}
 			// Populate service fields from config
 			otelAttrs.SensorVersion = envConfig.SensorVersion
 			otelAttrs.SensorID = suricataConfig.SensorID
@@ -127,6 +130,16 @@ func mapEventToOTEL(event *SuricataHTTPEvent) *OTELAttributes {
 	}
 	if respHeadersBytes, err := json.Marshal(event.Response.Header); err == nil {
 		attrs.ResponseHeaders = string(respHeadersBytes)
+	}
+
+	// Check mandatory fields
+	if attrs.HTTPMethod == "" ||
+		attrs.HTTPTarget == "" ||
+		attrs.HTTPHost == "" ||
+		attrs.HTTPStatusCode == 0 ||
+		attrs.NetPeerIP == "" {
+		log.Printf("Mandatory fields missing in OTEL attributes")
+		return nil
 	}
 
 	return &attrs

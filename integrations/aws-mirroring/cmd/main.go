@@ -12,7 +12,6 @@ import (
 	"mirroring/config"
 	"mirroring/layers"
 
-	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -24,11 +23,6 @@ func getProjectRoot() string {
 	return dir
 }
 
-func isValidUUID(uuidStr string) bool {
-	_, err := uuid.Parse(uuidStr)
-	return err == nil
-}
-
 func main() {
 	path := getProjectRoot()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -38,10 +32,6 @@ func main() {
 	suricataConfig, err := config.LoadSuricataConfig(filepath.Join(path, "mirror-settings.json"))
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
-	}
-
-	if !isValidUUID(suricataConfig.SensorID) {
-		log.Fatalf("Invalid SensorID %s, dropping trace", suricataConfig.SensorID)
 	}
 
 	envConfig, err := config.LoadEnvConfig(filepath.Join(path, ".env"))
