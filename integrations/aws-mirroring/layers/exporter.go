@@ -15,6 +15,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
+const SENSOR_VERSION string = "0.0.1"
+
 func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) (*sdktrace.TracerProvider, error) {
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
@@ -35,7 +37,7 @@ func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, en
 	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceVersion(envConfig.SensorVersion),
+			semconv.ServiceVersion(SENSOR_VERSION),
 		),
 	)
 	if err != nil {

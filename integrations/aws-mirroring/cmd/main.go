@@ -34,7 +34,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	envConfig, err := config.LoadEnvConfig(filepath.Join(path, ".env"))
+	envConfig, err := config.LoadEnvConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}

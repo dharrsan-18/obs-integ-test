@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 )
 
 type SuricataConfig struct {
@@ -30,7 +29,6 @@ type EnvConfig struct {
 	OTELRetryInitInterval time.Duration `env:"OTEL_RETRY_INITIAL_INTERVAL,default=1s"`
 	OTELRetryMaxInterval  time.Duration `env:"OTEL_RETRY_MAX_INTERVAL,default=5s"`
 	OTELRetryMaxElapsed   time.Duration `env:"OTEL_RETRY_MAX_ELAPSED_TIME,default=30s"`
-	SensorVersion         string        `env:"SENSOR_VERSION,required"`
 }
 
 func isValidUUID(uuidStr string) bool {
@@ -62,21 +60,17 @@ func LoadSuricataConfig(filename string) (*SuricataConfig, error) {
 	return config, nil
 }
 
-func LoadEnvConfig(filename string) (*EnvConfig, error) {
-	if err := godotenv.Load(filename); err != nil {
-		return nil, fmt.Errorf("error loading .env file: %v", err)
-	}
+func LoadEnvConfig() (*EnvConfig, error) {
 
 	env := &EnvConfig{
-		Routines:              stringEnvToInt("routines", 10),
-		OTELBatchTimeout:      time.Duration(stringEnvToInt("OTEL_BATCH_TIMEOUT", 5)) * time.Second,
-		OTELMaxBatchSize:      stringEnvToInt("OTEL_MAX_BATCH_SIZE", 512),
-		OTELMaxQueueSize:      stringEnvToInt("OTEL_MAX_QUEUE_SIZE", 2048),
-		OTELExportTimeout:     time.Duration(stringEnvToInt("OTEL_EXPORT_TIMEOUT", 30)) * time.Second,
-		OTELRetryInitInterval: time.Duration(stringEnvToInt("OTEL_RETRY_INITIAL_INTERVAL", 1)) * time.Second,
-		OTELRetryMaxInterval:  time.Duration(stringEnvToInt("OTEL_RETRY_MAX_INTERVAL", 5)) * time.Second,
-		OTELRetryMaxElapsed:   time.Duration(stringEnvToInt("OTEL_RETRY_MAX_ELAPSED_TIME", 30)) * time.Second,
-		SensorVersion:         os.Getenv("SENSOR_VERSION"),
+		Routines:              stringEnvToInt(os.Getenv("routines"), 10),
+		OTELBatchTimeout:      time.Duration(stringEnvToInt(os.Getenv("OTEL_BATCH_TIMEOUT"), 5)) * time.Second,
+		OTELMaxBatchSize:      stringEnvToInt(os.Getenv("OTEL_MAX_BATCH_SIZE"), 512),
+		OTELMaxQueueSize:      stringEnvToInt(os.Getenv("OTEL_MAX_QUEUE_SIZE"), 2048),
+		OTELExportTimeout:     time.Duration(stringEnvToInt(os.Getenv("OTEL_EXPORT_TIMEOUT"), 30)) * time.Second,
+		OTELRetryInitInterval: time.Duration(stringEnvToInt(os.Getenv("OTEL_RETRY_INITIAL_INTERVAL"), 1)) * time.Second,
+		OTELRetryMaxInterval:  time.Duration(stringEnvToInt(os.Getenv("OTEL_RETRY_MAX_INTERVAL"), 5)) * time.Second,
+		OTELRetryMaxElapsed:   time.Duration(stringEnvToInt(os.Getenv("OTEL_RETRY_MAX_ELAPSED_TIME"), 30)) * time.Second,
 	}
 
 	if env.Routines > 50 || env.Routines < 1 {

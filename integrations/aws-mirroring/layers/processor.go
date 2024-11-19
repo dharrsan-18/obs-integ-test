@@ -89,7 +89,7 @@ func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.Sur
 				continue
 			}
 			// Populate service fields from config
-			otelAttrs.SensorVersion = envConfig.SensorVersion
+			otelAttrs.SensorVersion = SENSOR_VERSION
 			otelAttrs.SensorID = suricataConfig.SensorID
 
 			// Send to OTEL layer
