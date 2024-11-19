@@ -2,6 +2,6 @@
     "network-interface": "",
     "sensor-id": "550e8400-e29b-41d4-a716-446655440000",
     "otel-collector-endpoint": "54.80.167.215:4317",
-    "accept-hosts": ["getastra.com"],
+    "accept-hosts": ["getastra.com","time.jsontest.com"],
     "deny-content-type": [""]
 }

@@ -35,7 +35,6 @@ func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, en
 	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName(suricataConfig.SensorID),
 			semconv.ServiceVersion(envConfig.SensorVersion),
 		),
 	)

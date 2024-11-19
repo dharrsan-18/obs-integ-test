@@ -31,7 +31,6 @@ type EnvConfig struct {
 	OTELRetryMaxInterval  time.Duration `env:"OTEL_RETRY_MAX_INTERVAL,default=5s"`
 	OTELRetryMaxElapsed   time.Duration `env:"OTEL_RETRY_MAX_ELAPSED_TIME,default=30s"`
 	SensorVersion         string        `env:"SENSOR_VERSION,required"`
-	SuricataVersion       string        `env:"SURICATA_VERSION,required"`
 }
 
 func isValidUUID(uuidStr string) bool {
@@ -68,13 +67,16 @@ func LoadEnvConfig(filename string) (*EnvConfig, error) {
 		return nil, fmt.Errorf("error loading .env file: %v", err)
 	}
 
-	routines, err := strconv.Atoi(os.Getenv("routines"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse routines: %v", err)
-	}
-
 	env := &EnvConfig{
-		Routines: routines,
+		Routines:              stringEnvToInt("routines", 10),
+		OTELBatchTimeout:      time.Duration(stringEnvToInt("OTEL_BATCH_TIMEOUT", 5)) * time.Second,
+		OTELMaxBatchSize:      stringEnvToInt("OTEL_MAX_BATCH_SIZE", 512),
+		OTELMaxQueueSize:      stringEnvToInt("OTEL_MAX_QUEUE_SIZE", 2048),
+		OTELExportTimeout:     time.Duration(stringEnvToInt("OTEL_EXPORT_TIMEOUT", 30)) * time.Second,
+		OTELRetryInitInterval: time.Duration(stringEnvToInt("OTEL_RETRY_INITIAL_INTERVAL", 1)) * time.Second,
+		OTELRetryMaxInterval:  time.Duration(stringEnvToInt("OTEL_RETRY_MAX_INTERVAL", 5)) * time.Second,
+		OTELRetryMaxElapsed:   time.Duration(stringEnvToInt("OTEL_RETRY_MAX_ELAPSED_TIME", 30)) * time.Second,
+		SensorVersion:         os.Getenv("SENSOR_VERSION"),
 	}
 
 	if env.Routines > 50 || env.Routines < 1 {
@@ -82,4 +84,17 @@ func LoadEnvConfig(filename string) (*EnvConfig, error) {
 	}
 
 	return env, nil
+}
+
+func stringEnvToInt(val string, defaultVal int) int {
+	if val == "" {
+		return defaultVal
+	}
+
+	num, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
+
+	return num
 }

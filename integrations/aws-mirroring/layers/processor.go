@@ -152,13 +152,34 @@ func mapEventToOTEL(event *SuricataHTTPEvent) *OTELAttributes {
 		attrs.ResponseHeaders = string(respHeadersBytes)
 	}
 
-	// Check mandatory fields
-	if attrs.HTTPMethod == "" ||
-		attrs.HTTPTarget == "" ||
-		attrs.HTTPHost == "" ||
-		attrs.HTTPStatusCode == 0 ||
-		attrs.NetPeerIP == "" {
-		log.Printf("Mandatory fields missing in OTEL attributes")
+	var missingFields []string
+
+	if attrs.HTTPMethod == "" {
+		log.Printf("Missing HTTPMethod in request-line: %+v", event.Request.Header["request-line"])
+		missingFields = append(missingFields, "HTTPMethod")
+	}
+
+	if attrs.HTTPTarget == "" {
+		log.Printf("Missing HTTPTarget in request-line: %+v", event.Request.Header["request-line"])
+		missingFields = append(missingFields, "HTTPTarget")
+	}
+
+	if attrs.HTTPHost == "" {
+		log.Printf("Missing HTTPHost in headers: %+v", event.Request.Header["Host"])
+		missingFields = append(missingFields, "HTTPHost")
+	}
+
+	if attrs.HTTPStatusCode == 0 {
+		log.Printf("Missing or invalid HTTPStatusCode in response-line: %+v", event.Response.Header["response-line"])
+		missingFields = append(missingFields, "HTTPStatusCode")
+	}
+
+	if attrs.NetPeerIP == "" {
+		log.Printf("Missing NetPeerIP in metadata: SrcIP=%v", event.Metadata.SrcIP)
+		missingFields = append(missingFields, "NetPeerIP")
+	}
+
+	if len(missingFields) > 0 {
 		return nil
 	}
 
