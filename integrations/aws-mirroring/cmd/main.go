@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -23,27 +24,50 @@ func getProjectRoot() string {
 	return dir
 }
 
+func initLogger() *slog.Logger {
+	opts := &slog.HandlerOptions{
+		Level:     slog.LevelInfo,
+		AddSource: true,
+	}
+
+	handler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+	return logger
+}
+
 func main() {
+	logger := initLogger()
+	logger.Info("Starting application", "version", "1.0.0")
+
 	path := getProjectRoot()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	eg, ctx := errgroup.WithContext(ctx)
 
 	suricataConfig, err := config.LoadSuricataConfig(filepath.Join(path, "mirror-settings.json"))
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		slog.Error("Failed to load Suricata config",
+			"error", err,
+			"path", filepath.Join(path, "mirror-settings.json"))
+		os.Exit(1)
 	}
 
 	envConfig, err := config.LoadEnvConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		slog.Error("Failed to load environment config",
+			"error", err)
+		os.Exit(1)
 	}
 
 	tp, err := layers.InitExporter(ctx, suricataConfig, envConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize exporter: %v", err)
+		slog.Error("Failed to initialize exporter",
+			"error", err,
+			"collector_endpoint", suricataConfig.OtelCollectorEndpoint)
+		os.Exit(1)
 	}
-
 	channels := &layers.Channels{
 		LogsChan:           make(chan *layers.SuricataHTTPEvent, envConfig.Routines),
 		OtelAttributesChan: make(chan *layers.OTELAttributes, envConfig.Routines),
@@ -55,9 +79,11 @@ func main() {
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case sig := <-signalChan:
-			log.Printf("Received signal %v, starting graceful shutdown...", sig)
+			slog.Warn("Received shutdown signal",
+				"signal", sig,
+				"action", "starting graceful shutdown")
 			cancel()
-
+			slog.Info("Waiting for graceful shutdown...")
 			// Close channels
 			// Wait for 10 seconds
 			time.Sleep(10 * time.Second)
@@ -86,13 +112,15 @@ func main() {
 
 	// Wait for all goroutines to complete
 	if err := eg.Wait(); err != nil && err != context.Canceled {
-		log.Printf("Error during shutdown: %v", err)
+		slog.Error("Error during shutdown",
+			"error", err)
 	}
 
 	// Final cleanup
 	if err := tp.Shutdown(ctx); err != nil && err != context.Canceled {
-		log.Printf("Error shutting down tracer provider: %v", err)
+		slog.Error("Error shutting down tracer provider",
+			"error", err)
 	}
 
-	log.Println("Shutdown complete")
+	slog.Info("Shutdown complete")
 }

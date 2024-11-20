@@ -3,8 +3,7 @@ package layers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -25,67 +24,76 @@ func isContentTypeDenied(contentType string, denyContentTypes []string) bool {
 	return false
 }
 
-func getRequestInfo(event *SuricataHTTPEvent) string {
-	scheme := "http"
-	if event.Metadata.DestPort == 443 {
-		scheme = "https"
-	}
-
-	method := ""
-	path := ""
-	if requestLine, ok := event.Request.Header["request-line"].(string); ok {
-		parts := strings.Split(requestLine, " ")
-		if len(parts) >= 2 {
-			method = parts[0]
-			path = parts[1]
-		}
-	}
-
-	return fmt.Sprintf("scheme=%s method=%s path=%s", scheme, method, path)
-}
-
 func ProcessorFunc(ctx context.Context, ch *Channels, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) error {
 	acceptSet := make(map[string]struct{})
 	for _, host := range suricataConfig.AcceptHosts {
 		acceptSet[host] = struct{}{}
 	}
+
 	for {
 		select {
 		case <-ctx.Done():
+			slog.Debug("Context cancelled, stopping processor")
 			return ctx.Err()
 		case event, ok := <-ch.LogsChan:
 			if !ok {
+				slog.Debug("Logs channel closed, stopping processor")
 				return nil
 			}
 
-			// Check if the hostname is accepted
+			// Host validation
 			if host, ok := event.Request.Header["Host"].(string); ok {
 				if _, hostAccepted := acceptSet[host]; !hostAccepted {
-					log.Printf("Host %s is not accepted, skipping event: %s", host, getRequestInfo(event))
+					slog.Warn("Denied trace: non-accepted host",
+						"client_ip", event.Metadata.SrcIP,
+						"server_ip", event.Metadata.DestIP,
+						"host", host,
+						"request_line", event.Request.Header["request-line"])
 					continue
 				}
 			} else {
-				log.Printf("Host is not a string, skipping event")
+				slog.Warn("Denied trace: invalid host in request headers",
+					"client_ip", event.Metadata.SrcIP,
+					"server_ip", event.Metadata.DestIP,
+					"request_line", event.Request.Header["request-line"])
 				continue
 			}
 
-			// Deny if the request or response content types contain any denied substring
+			// Content type validation
 			reqContentType, _ := event.Request.Header["Content-Type"].(string)
 			respContentType, _ := event.Response.Header["Content-Type"].(string)
 			if isContentTypeDenied(reqContentType, suricataConfig.DenyContentTypes) ||
 				isContentTypeDenied(respContentType, suricataConfig.DenyContentTypes) {
-				log.Printf("Content-Type is denied, skipping event: %s", getRequestInfo(event))
+				slog.Warn("Denied trace: denied content type",
+					"client_ip", event.Metadata.SrcIP,
+					"server_ip", event.Metadata.DestIP,
+					"host", event.Request.Header["Host"],
+					"request_line", event.Request.Header["request-line"],
+					"request_content_type", reqContentType,
+					"response_content_type", respContentType)
 				continue
 			}
 
+			// Size validation
 			if len(event.Request.Body) > maxBodySize || len(event.Response.Body) > maxBodySize {
-				log.Printf("Request or response body exceeds 1MB, skipping event: %s", getRequestInfo(event))
+				slog.Warn("Denied trace: oversized payload",
+					"client_ip", event.Metadata.SrcIP,
+					"server_ip", event.Metadata.DestIP,
+					"host", event.Request.Header["Host"],
+					"request_line", event.Request.Header["request-line"],
+					"request_body_size", len(event.Request.Body),
+					"response_body_size", len(event.Response.Body),
+					"max_allowed_size", maxBodySize)
 				continue
 			}
 
 			otelAttrs := mapEventToOTEL(event)
 			if otelAttrs == nil {
-				log.Printf("Invalid event data, skipping event: %s", getRequestInfo(event))
+				slog.Warn("Denied trace: invalid event data",
+					"client_ip", event.Metadata.SrcIP,
+					"server_ip", event.Metadata.DestIP,
+					"host", event.Request.Header["Host"],
+					"request_line", event.Request.Header["request-line"])
 				continue
 			}
 			// Populate service fields from config
@@ -153,33 +161,29 @@ func mapEventToOTEL(event *SuricataHTTPEvent) *OTELAttributes {
 	}
 
 	var missingFields []string
-
 	if attrs.HTTPMethod == "" {
-		log.Printf("Missing HTTPMethod in request-line: %+v", event.Request.Header["request-line"])
 		missingFields = append(missingFields, "HTTPMethod")
 	}
-
 	if attrs.HTTPTarget == "" {
-		log.Printf("Missing HTTPTarget in request-line: %+v", event.Request.Header["request-line"])
 		missingFields = append(missingFields, "HTTPTarget")
 	}
-
 	if attrs.HTTPHost == "" {
-		log.Printf("Missing HTTPHost in headers: %+v", event.Request.Header["Host"])
 		missingFields = append(missingFields, "HTTPHost")
 	}
-
 	if attrs.HTTPStatusCode == 0 {
-		log.Printf("Missing or invalid HTTPStatusCode in response-line: %+v", event.Response.Header["response-line"])
 		missingFields = append(missingFields, "HTTPStatusCode")
 	}
-
 	if attrs.NetPeerIP == "" {
-		log.Printf("Missing NetPeerIP in metadata: SrcIP=%v", event.Metadata.SrcIP)
 		missingFields = append(missingFields, "NetPeerIP")
 	}
 
 	if len(missingFields) > 0 {
+		slog.Warn("Denied trace: missing required fields",
+			"client_ip", event.Metadata.SrcIP,
+			"server_ip", event.Metadata.DestIP,
+			"host", event.Request.Header["Host"],
+			"request_line", event.Request.Header["request-line"],
+			"missing_fields", missingFields)
 		return nil
 	}
 

@@ -3,7 +3,7 @@ package layers
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"mirroring/config"
 
@@ -21,7 +21,7 @@ func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, en
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(suricataConfig.OtelCollectorEndpoint), // Adjust endpoint as needed
+		otlptracegrpc.WithEndpoint(suricataConfig.OtelCollectorEndpoint),
 		otlptracegrpc.WithTimeout(envConfig.OTELExportTimeout),
 		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
 			Enabled:         true,
@@ -31,6 +31,9 @@ func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, en
 		}),
 	)
 	if err != nil {
+		slog.Error("Failed to create OTLP exporter",
+			"error", err,
+			"endpoint", suricataConfig.OtelCollectorEndpoint)
 		return nil, fmt.Errorf("failed to create exporter: %w", err)
 	}
 
@@ -41,6 +44,9 @@ func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, en
 		),
 	)
 	if err != nil {
+		slog.Error("Failed to create resource",
+			"error", err,
+			"sensor_version", SENSOR_VERSION)
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
@@ -54,6 +60,19 @@ func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, en
 		sdktrace.WithResource(res),
 	)
 	otel.SetTracerProvider(tp)
+
+	slog.Info("Initialized OpenTelemetry exporter",
+		slog.Group("exporter",
+			"endpoint", suricataConfig.OtelCollectorEndpoint,
+			"timeout", envConfig.OTELExportTimeout.String(),
+			"retry_initial_interval", envConfig.OTELRetryInitInterval.String(),
+			"retry_max_interval", envConfig.OTELRetryMaxInterval.String(),
+			"retry_max_elapsed", envConfig.OTELRetryMaxElapsed.String()),
+		slog.Group("tracer",
+			"batch_timeout", envConfig.OTELBatchTimeout.String(),
+			"max_batch_size", envConfig.OTELMaxBatchSize,
+			"max_queue_size", envConfig.OTELMaxQueueSize,
+			"sensor_version", SENSOR_VERSION))
 
 	return tp, nil
 }
@@ -94,7 +113,18 @@ func ExportFunc(ctx context.Context, ch *Channels, envConfig *config.EnvConfig) 
 
 			// Set attributes and end span
 			span.SetAttributes(attributes...)
-			log.Println("Span created and attributes set:", attributes)
+			slog.Debug("Created span with attributes",
+				"method", attrs.HTTPMethod,
+				"target", attrs.HTTPTarget,
+				"host", attrs.HTTPHost,
+				"status_code", attrs.HTTPStatusCode,
+				"client_ip", attrs.NetPeerIP,
+				slog.Group("request",
+					"content_type", attrs.RequestHeaders, // This will contain Content-Type from headers
+					"body_size", len(attrs.RequestBody)),
+				slog.Group("response",
+					"content_type", attrs.ResponseHeaders, // This will contain Content-Type from headers
+					"body_size", len(attrs.ResponseBody)))
 			span.End()
 		}
 	}
