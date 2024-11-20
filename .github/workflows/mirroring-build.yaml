@@ -35,8 +35,8 @@ jobs:
           GO_VERSION=${{ secrets.GO_VERSION }}
           SURICATA_VERSION=${{ secrets.SURICATA_VERSION }}
         tags: |
-          ${{ secrets.DOCKER_USERNAME }}/aws-mirroring:${{ github.ref_name }}
-          ${{ secrets.DOCKER_USERNAME }}/aws-mirroring:latest
+          ${{ secrets.DOCKER_USERNAME }}/mirroring:${{ github.ref_name }}
+          ${{ secrets.DOCKER_USERNAME }}/mirroring:latest
 
     - name: Post build info
       run: echo "Docker image for mirroring built and pushed with tags ${{ github.ref_name }} and latest"
