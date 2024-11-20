@@ -62,7 +62,6 @@ func LoadSuricataConfig(filename string) (*SuricataConfig, error) {
 }
 
 func LoadEnvConfig() (*EnvConfig, error) {
-	fmt.Println("routines: ", os.Getenv("ROUTINES"))
 	env := &EnvConfig{
 		ROUTINES:              stringEnvToInt(os.Getenv("ROUTINES"), 10),
 		LOG_LEVEL:             os.Getenv("LOG_LEVEL"),

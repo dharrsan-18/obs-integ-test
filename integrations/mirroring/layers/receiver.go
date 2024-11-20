@@ -143,9 +143,6 @@ func ReceiverFunc(ctx context.Context, ch *Channels, iface string) error {
 			data := scanner.Bytes()
 			event := &SuricataHTTPEvent{}
 			if err := json.Unmarshal(data, event); err == nil {
-				slog.Debug("Received HTTP event",
-					"client_ip", event.Metadata.SrcIP,
-					"server_ip", event.Metadata.DestIP)
 				ch.LogsChan <- event
 			}
 		}
