@@ -21,7 +21,8 @@ type SuricataConfig struct {
 }
 
 type EnvConfig struct {
-	Routines              int           `env:"routines,default=10"`
+	ROUTINES              int           `env:"ROUTINES,default=10"`
+	LOG_LEVEL             string        `env:"LOG_LEVEL,default=DEBUG"`
 	OTELBatchTimeout      time.Duration `env:"OTEL_BATCH_TIMEOUT,default=5s"`
 	OTELMaxBatchSize      int           `env:"OTEL_MAX_BATCH_SIZE,default=512"`
 	OTELMaxQueueSize      int           `env:"OTEL_MAX_QUEUE_SIZE,default=2048"`
@@ -61,9 +62,10 @@ func LoadSuricataConfig(filename string) (*SuricataConfig, error) {
 }
 
 func LoadEnvConfig() (*EnvConfig, error) {
-
+	fmt.Println("routines: ", os.Getenv("ROUTINES"))
 	env := &EnvConfig{
-		Routines:              stringEnvToInt(os.Getenv("routines"), 10),
+		ROUTINES:              stringEnvToInt(os.Getenv("ROUTINES"), 10),
+		LOG_LEVEL:             os.Getenv("LOG_LEVEL"),
 		OTELBatchTimeout:      time.Duration(stringEnvToInt(os.Getenv("OTEL_BATCH_TIMEOUT"), 5)) * time.Second,
 		OTELMaxBatchSize:      stringEnvToInt(os.Getenv("OTEL_MAX_BATCH_SIZE"), 512),
 		OTELMaxQueueSize:      stringEnvToInt(os.Getenv("OTEL_MAX_QUEUE_SIZE"), 2048),
@@ -73,7 +75,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 		OTELRetryMaxElapsed:   time.Duration(stringEnvToInt(os.Getenv("OTEL_RETRY_MAX_ELAPSED_TIME"), 30)) * time.Second,
 	}
 
-	if env.Routines > 50 || env.Routines < 1 {
+	if env.ROUTINES > 50 || env.ROUTINES < 1 {
 		return nil, fmt.Errorf("unsupported number of routines. must be between 1 - 50")
 	}
 

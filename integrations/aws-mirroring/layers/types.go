@@ -1,5 +1,7 @@
 package layers
 
+const SENSOR_VERSION string = "0.10.1"
+
 type Channels struct {
 	LogsChan           chan *SuricataHTTPEvent
 	OtelAttributesChan chan *OTELAttributes

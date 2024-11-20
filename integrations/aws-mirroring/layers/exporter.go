@@ -15,8 +15,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-const SENSOR_VERSION string = "0.0.1"
-
 func InitExporter(ctx context.Context, suricataConfig *config.SuricataConfig, envConfig *config.EnvConfig) (*sdktrace.TracerProvider, error) {
 	// Create OTLP exporter
 	exporter, err := otlptracegrpc.New(ctx,
@@ -83,6 +81,7 @@ func ExportFunc(ctx context.Context, ch *Channels, envConfig *config.EnvConfig) 
 	for {
 		select {
 		case <-ctx.Done():
+			slog.Debug("Context cancelled, stopping Exporter")
 			return ctx.Err()
 		case attrs, ok := <-ch.OtelAttributesChan:
 			if !ok {

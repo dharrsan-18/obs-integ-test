@@ -147,8 +147,6 @@ func ReceiverFunc(ctx context.Context, ch *Channels, iface string) error {
 					"client_ip", event.Metadata.SrcIP,
 					"server_ip", event.Metadata.DestIP)
 				ch.LogsChan <- event
-			} else {
-				slog.Debug("Failed to unmarshal event data", "error", err)
 			}
 		}
 	}
