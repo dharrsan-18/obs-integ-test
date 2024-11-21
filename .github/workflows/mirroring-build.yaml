@@ -1,0 +1,42 @@
+# .github/workflows/docker-build-mirroring.yml
+name: Build and Push Docker Image for Mirroring
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on release tags
+    paths:
+      - 'integrations/mirroring/**'  # Only trigger if changes are in this path
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'refs/tags/v')  # Ensure it's a tag
+
+    steps:
+    - name: Checkout codegit 
+      uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: ./integrations/mirroring
+        push: true
+        build-args: |
+          GO_VERSION=${{ secrets.GO_VERSION }}
+          SURICATA_VERSION=${{ secrets.SURICATA_VERSION }}
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/mirroring:${{ github.ref_name }}
+          ${{ secrets.DOCKER_USERNAME }}/mirroring:latest
+
+    - name: Post build info
+      run: echo "Docker image for mirroring built and pushed with tags ${{ github.ref_name }} and latest"
