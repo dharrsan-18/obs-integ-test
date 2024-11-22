@@ -31,7 +31,7 @@ func checkDockerAvailability() {
 	if err := cmd.Run(); err != nil {
 		log.Println("Docker is not installed or not found in the system PATH.")
 		log.Println("Please ensure Docker is installed and available in your PATH.")
-		log.Println("For installation instructions, visit: https://docs.docker.com/get-docker/")
+		log.Println("For installation instructions, visit: https://docs.docker.com/engine/install/")
 		os.Exit(1)
 	}
 }
