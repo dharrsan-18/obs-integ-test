@@ -1,6 +1,6 @@
-module github.com/obs-integrations/mitm
+module github.com/getastra/obs-integrations/astra-cli
 
-go 1.23.2
+go 1.23.3
 
 require github.com/spf13/cobra v1.8.1
 

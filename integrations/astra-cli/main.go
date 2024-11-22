@@ -13,15 +13,28 @@ import (
 )
 
 const (
-	imageName     = "getastra/proxy"           // Replace with your Docker image name
-	containerName = "astra-proxy-service"      // Replace with your container name
-	lockFilePath  = "/tmp/astra-cli-tool.lock" // Path for the lock file
+	imageName     string = "getastra/proxy"           // Replace with your Docker image name
+	containerName string = "astra-proxy-service"      // Replace with your container name
+	lockFilePath  string = "/tmp/astra-cli-tool.lock" // Path for the lock file
+
+	EntryPointArgIdentifier string = "--entrypoint"
 )
 
 var (
 	lockFile       *os.File
 	entryPointArgs []string
 )
+
+// checkDockerAvailability checks if the Docker command is available
+func checkDockerAvailability() {
+	cmd := exec.Command("docker", "--version")
+	if err := cmd.Run(); err != nil {
+		log.Println("Docker is not installed or not found in the system PATH.")
+		log.Println("Please ensure Docker is installed and available in your PATH.")
+		log.Println("For installation instructions, visit: https://docs.docker.com/get-docker/")
+		os.Exit(1)
+	}
+}
 
 // ensureSingleInstance ensures only one instance of the CLI is running using a file lock
 func ensureSingleInstance() {
@@ -46,32 +59,92 @@ func releaseLock() {
 	}
 }
 
-// startContainer starts the Docker container with the provided flags
-func startContainer(flags []string) {
-	args := []string{"run", "--rm", "--name", containerName, "--entrypoint", "mitmdump", imageName}
+// quickStartContainer starts the Docker container with the provided flags
+func quickStartContainer(flags []string) {
+	args := []string{"run", "-d", "--name", containerName, "--network=host"}
+	dockerArgs := []string{}
+	mitmPort := ""
+
+	for idx := 0; idx < len(flags); idx++ {
+		if flags[idx] == "--listen-port" {
+			mitmPort = flags[idx+1]
+			idx++
+		} else {
+			dockerArgs = append(dockerArgs, flags[idx])
+		}
+	}
+
+	args = append(args, dockerArgs...)
+	args = append(args, "--entrypoint", "mitmdump", imageName, "-k", "-s", "/app/capture.py")
 
 	// Check if the entrypoint is specified in the flags
-	if len(entryPointArgs) > 0 {
-		args = append(args, entryPointArgs...)
-	} else {
-		// Use default entrypoint args and options
-		args = append(args, "-k", "-s", "/app/wrapper_tool.py")
+	if len(mitmPort) > 0 {
+		args = append(args, "--listen-port", mitmPort)
 	}
 
-	// Append any additional flags provided by the user
-	args = append(args, flags...)
-
-	fmt.Println("Command being execed: docker", strings.Join(args, " "))
-
+	log.Println("Running command... docker", strings.Join(args, " "))
 	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
-	log.Println("Starting container...")
+	// Capture both stdout and stderr
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("Failed to start container: %v", err)
+		// Log both the error and the stderr output
+		log.Printf("Failed to start container: %v\n", err)
+		log.Printf("Docker error output: %s\n", errBuf.String())
+		return
 	}
-	log.Println("Container started successfully.")
+
+	// Log both stdout and stderr output in case of a successful run
+	log.Printf("Command: `docker %s` executed successfully.", strings.Join(args, " "))
+	log.Printf("Docker output: %s\n", outBuf.String())
+}
+
+// startContainer starts the Docker container with the provided flags
+func startContainer(flags []string) {
+	args := []string{"run", "-d", "--name", containerName}
+
+	// Append any additional flags provided by the user until "--entrypoint" argument is observed
+	dockerArgs := flags
+	mitmArgs := []string{}
+	for idx, arg := range flags {
+		if arg == EntryPointArgIdentifier {
+			dockerArgs = flags[:idx]
+			mitmArgs = flags[idx:]
+		}
+	}
+
+	args = append(args, dockerArgs...)
+
+	// Check if the entrypoint is specified in the flags
+	if len(mitmArgs) > 1 {
+		args = append(args, mitmArgs...)
+	} else {
+		// Use default entrypoint args
+		//append mandatory entrypoint arg
+		args = append(args, "--entrypoint", "mitmdump", imageName, "-k", "-s", "/app/capture.py")
+	}
+
+	log.Println("Running command... docker", strings.Join(args, " "))
+	cmd := exec.Command("docker", args...)
+
+	// Capture both stdout and stderr
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	if err := cmd.Run(); err != nil {
+		// Log both the error and the stderr output
+		log.Printf("Failed to start container: %v\n", err)
+		log.Printf("Docker error output: %s\n", errBuf.String())
+		return
+	}
+
+	// Log both stdout and stderr output in case of a successful run
+	log.Printf("Command: `docker %s` executed successfully.", strings.Join(args, " "))
+	log.Printf("Docker output: %s\n", outBuf.String())
 }
 
 // isContainerRunning checks if the Docker container is running
@@ -90,8 +163,6 @@ func isContainerRunning() bool {
 
 // stopContainer stops the running Docker container
 func stopContainer() {
-	fmt.Println("Command being execed: docker stop", containerName)
-
 	if !isContainerRunning() {
 		log.Println("Container is not running, no need to stop.")
 		return
@@ -109,10 +180,8 @@ func stopContainer() {
 }
 
 // pullLatestImage pulls the latest image from docker repository
-func pullLatestImage(flags []string) {
+func pullLatestImage(_ []string) {
 	log.Println("Checking for new image...")
-
-	fmt.Println("Command being execed: docker pull", imageName)
 
 	pullCmd := exec.Command("docker", "pull", imageName)
 	pullCmd.Stdout = os.Stdout
@@ -162,8 +231,6 @@ func streamLogs(flags []string) {
 	args := append([]string{"logs"}, flags...)
 	args = append(args, containerName)
 
-	fmt.Println("Command being execed: docker ", strings.Join(args, " "))
-
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -176,7 +243,7 @@ func streamLogs(flags []string) {
 
 // checkStatus checks the status of the Docker container
 func checkStatus() {
-	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("name=%s", containerName))
+	cmd := exec.Command("docker", "ps", "-a", "--filter", fmt.Sprintf("name=%s", containerName))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -186,7 +253,22 @@ func checkStatus() {
 	}
 }
 
+// removeContainer removes a Docker container by its name
+func removeContainer() {
+	cmd := exec.Command("docker", "rm", containerName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	log.Println("Removing container...")
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("Failed to remove container: %v", err)
+	}
+	log.Println("Container removed successfully.")
+}
+
 func main() {
+	checkDockerAvailability()
+
 	// Ensure single instance using file lock
 	ensureSingleInstance()
 	defer releaseLock() // Release the lock when the program exits
@@ -198,23 +280,30 @@ func main() {
 
 	var proxyCmd = &cobra.Command{
 		Use:   "proxy",
-		Short: "Manage the Docker proxy container",
+		Short: "Manage the Astra proxy container",
+	}
+
+	var quickStartCmd = &cobra.Command{
+		Use:                "quickstart",
+		Short:              "Start the Astra proxy container with env variable(s) and proxy port",
+		DisableFlagParsing: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			quickStartContainer(args)
+		},
 	}
 
 	var startCmd = &cobra.Command{
 		Use:                "start",
-		Short:              "Start the Docker container",
+		Short:              "Start the Astra proxy container",
 		DisableFlagParsing: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(args)
 			startContainer(args)
 		},
 	}
-	startCmd.Flags().StringArrayVar(&entryPointArgs, "entryPointArgs", []string{}, "Arguments for the entrypoint command")
 
 	var stopCmd = &cobra.Command{
 		Use:                "stop",
-		Short:              "Stop the Docker container",
+		Short:              "Stop the Astra proxy container",
 		DisableFlagParsing: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			stopContainer()
@@ -223,7 +312,7 @@ func main() {
 
 	var upgradeCmd = &cobra.Command{
 		Use:                "upgrade",
-		Short:              "Upgrade the Docker container if a new image is available",
+		Short:              "Upgrade the Astra proxy container image if a new image is available",
 		DisableFlagParsing: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			pullLatestImage(args)
@@ -232,7 +321,7 @@ func main() {
 
 	var logsCmd = &cobra.Command{
 		Use:                "logs",
-		Short:              "Stream the Docker container logs",
+		Short:              "Stream the Astra proxy container logs",
 		DisableFlagParsing: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			streamLogs(args)
@@ -241,13 +330,21 @@ func main() {
 
 	var statusCmd = &cobra.Command{
 		Use:   "status",
-		Short: "Check the status of the Docker container",
+		Short: "Check the status of the Astra proxy container",
 		Run: func(cmd *cobra.Command, args []string) {
 			checkStatus()
 		},
 	}
 
-	proxyCmd.AddCommand(startCmd, stopCmd, upgradeCmd, logsCmd, statusCmd)
+	var removeCmd = &cobra.Command{
+		Use:   "remove",
+		Short: "Remove the Astra proxy container",
+		Run: func(cmd *cobra.Command, args []string) {
+			removeContainer()
+		},
+	}
+
+	proxyCmd.AddCommand(quickStartCmd, startCmd, stopCmd, upgradeCmd, logsCmd, statusCmd, removeCmd)
 	rootCmd.AddCommand(proxyCmd)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
