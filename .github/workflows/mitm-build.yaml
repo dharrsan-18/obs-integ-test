@@ -1,0 +1,39 @@
+name: Build and Push MITM Docker Image
+
+on:
+  push:
+    tags:
+      - 'integrations/mitm/v*'
+    paths:
+      - 'integrations/mitm/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'refs/tags/integrations/mitm/')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/integrations/mitm/}" >> $GITHUB_OUTPUT
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: ./integrations/mitm
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/mitm:${{ steps.get_version.outputs.VERSION }}
+          ${{ secrets.DOCKER_USERNAME }}/mitm:latest
