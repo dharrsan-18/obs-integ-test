@@ -4,7 +4,7 @@ name: Build and Push Docker Image for Mirroring
 on:
   push:
     tags:
-      - 'v*'  # Trigger on release tags
+      - 'v*'  # Trigger on release tag
     paths:
       - 'integrations/mirroring/**'  # Only trigger if changes are in this path
 
