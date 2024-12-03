@@ -12,5 +12,6 @@ WORKDIR /app
 # Expose the port mitmdump will use
 EXPOSE 8080
 
-# Command to run mitmdump with the Python script
-ENTRYPOINT ["mitmdump", "-k", "-s", "/app/capture.py"]
+ENTRYPOINT ["/bin/bash"]
+
+CMD ["-c", "/usr/local/bin/mitmdump -k -s /app/capture.py"]
